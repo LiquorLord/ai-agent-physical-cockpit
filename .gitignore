@@ -1,0 +1,26 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Large firmware images and raw dumps
+factory_reverse/backups/*.bin
+factory_reverse/backups/*.bin.sha256
+factory_reverse/rootfs/*.squashfs
+factory_reverse/rootfs/rootfs_extracted/
+firmware/splash/*.raw
+
+# Compiled binaries
+firmware/bin/*
+factory_reverse/flasher/flash_tool
+factory_reverse/flasher/sunxi-tools/sunxi-fel
+
+# Scratch & Logs
+scratch/*
+!scratch/.gitkeep
+factory_reverse/logs/*.log
+
+# Temporary and editor files
+.DS_Store
+*.swp
+*~
