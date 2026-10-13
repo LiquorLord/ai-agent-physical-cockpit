@@ -27,12 +27,16 @@ if [ -f /mnt/sdcard/splash.raw ]; then
     echo "[OK] 1600x600 Splash Screen loaded onto /dev/fb0"
 fi
 
-# 4. Activate USB High-Speed OTG Device / 激活 USB 高速从机模式
+# 4. Activate USB High-Speed OTG Composite Device (CDC-NCM + HID + ADB)
 cat /sys/devices/platform/soc/usbc0/usb_device >/dev/null 2>&1
-/usr/bin/setusbconfig adb
 /bin/adbd -D &
-echo 4100000.udc-controller > /sys/kernel/config/usb_gadget/g1/UDC 2>/dev/null
-echo "[OK] USB OTG ADB active & bound to UDC controller"
+if [ -x /mnt/sdcard/setup_gadget.sh ]; then
+    /mnt/sdcard/setup_gadget.sh
+else
+    /usr/bin/setusbconfig adb
+    echo 4100000.udc-controller > /sys/kernel/config/usb_gadget/g1/UDC 2>/dev/null
+    echo "[OK] USB OTG ADB active & bound to UDC controller"
+fi
 
 # 5. Fix adb_shell for seamless non-interactive execution
 cat << EOF_SHELL > /tmp/adb_shell
