@@ -85,11 +85,25 @@ ln -sf "$GADGET_DIR/functions/hid.usb0" "$CONFIG_DIR/hid.usb0"
 
 # 6. Start ADB daemon to initialize FunctionFS endpoints
 /bin/adbd -D &
-sleep 0.5
 
-# 7. Bind UDC controller with all 3 functions active
-echo 4100000.udc-controller > "$GADGET_DIR/UDC" 2>/dev/null
-echo "[OK] 3-in-1 Composite USB Gadget active (ADB + NCM + HID)"
+# 7. Robust UDC Bind with FunctionFS endpoint readiness polling (ensures D+ pullup is turned ON)
+echo "[*] Waiting for FunctionFS endpoints and binding UDC controller..."
+UDC_BOUND=0
+for i in 1 2 3 4 5 6 7 8 9 10; do
+    sleep 0.3
+    echo 4100000.udc-controller > "$GADGET_DIR/UDC" 2>/dev/null
+    if [ $? -eq 0 ]; then
+        echo "[OK] 3-in-1 Composite USB Gadget active (bound on attempt $i)"
+        UDC_BOUND=1
+        break
+    fi
+done
+
+# Fallback: If composite bind fails, enforce factory ADB UDC bind
+if [ $UDC_BOUND -eq 0 ]; then
+    echo "[WARN] Composite bind delayed, enforcing fallback UDC bind..."
+    echo 4100000.udc-controller > /sys/kernel/config/usb_gadget/g1/UDC 2>/dev/null
+fi
 
 sleep 0.5
 ifconfig usb0 192.168.10.1 netmask 255.255.255.0 up 2>/dev/null
