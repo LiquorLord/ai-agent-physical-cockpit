@@ -9,14 +9,44 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"unsafe"
 )
 
+type FbBitfield struct {
+	Offset   uint32
+	Length   uint32
+	MsbRight uint32
+}
+
+type FbVarScreeninfo struct {
+	Xres, Yres                                        uint32
+	XresVirtual, YresVirtual                          uint32
+	Xoffset, Yoffset                                  uint32
+	BitsPerPixel                                      uint32
+	Grayscale                                         uint32
+	Red, Green, Blue, Transp                          FbBitfield
+	Nonstd                                            uint32
+	Activate                                          uint32
+	Height, Width                                     uint32
+	AccelFlags                                        uint32
+	Pixclock                                          uint32
+	LeftMargin, RightMargin, UpperMargin, LowerMargin uint32
+	HsyncLen, VsyncLen                                uint32
+	Sync, Vmode, Rotate, Colorspace                   uint32
+	Reserved                                          [4]uint32
+}
+
 const (
-	FrameWidth  = 1600
-	FrameHeight = 600
-	BytesPerPix = 2
-	FrameSize   = FrameWidth * FrameHeight * BytesPerPix // 1,920,000 bytes
-	ListenPort  = ":5900"
+	FrameWidth          = 1600
+	FrameHeight         = 600
+	BytesPerPix         = 2
+	FrameSize           = FrameWidth * FrameHeight * BytesPerPix // 1,920,000 bytes
+	ListenPort          = ":5900"
+	FBIOGET_VSCREENINFO = 0x4600
+	FBIOPUT_VSCREENINFO = 0x4601
+	FBIOPAN_DISPLAY     = 0x4606
+	FB_ACTIVATE_NOW     = 0
+	FB_ACTIVATE_FORCE   = 128
 )
 
 func startWatchdogFeeder() {
@@ -47,11 +77,18 @@ func main() {
 	// Start background watchdog takeover immediately
 	startWatchdogFeeder()
 
-	fb, err := os.OpenFile("/dev/fb0", os.O_WRONLY, 0666)
+	fb, err := os.OpenFile("/dev/fb0", os.O_RDWR, 0666)
 	if err != nil {
 		log.Fatalf("[!] Failed to open /dev/fb0: %v", err)
 	}
 	defer fb.Close()
+
+	// Query screeninfo for page flipping
+	var v FbVarScreeninfo
+	syscall.Syscall(syscall.SYS_IOCTL, fb.Fd(), FBIOGET_VSCREENINFO, uintptr(unsafe.Pointer(&v)))
+	v.Activate = FB_ACTIVATE_NOW | FB_ACTIVATE_FORCE
+	v.Xoffset = 0
+	v.Yoffset = 0
 
 	// Handle graceful shutdown
 	sigChan := make(chan os.Signal, 1)
@@ -111,6 +148,9 @@ func main() {
 				log.Printf("[-] Write error: %v", err)
 				break
 			}
+
+			// Pan display to trigger hardware page flip on Allwinner DE2.0
+			syscall.Syscall(syscall.SYS_IOCTL, fb.Fd(), FBIOPAN_DISPLAY, uintptr(unsafe.Pointer(&v)))
 
 			frameCount++
 			if frameCount%100 == 0 {

@@ -37,16 +37,46 @@ cat /sys/devices/platform/soc/usbc0/usb_device >/dev/null 2>&1
 /usr/bin/setusbconfig adb
 /bin/adbd -D &
 sleep 0.5
-echo 4100000.udc-controller > /sys/kernel/config/usb_gadget/g1/UDC 2>/dev/null
-echo "[OK] Baseline USB ADB active"
+
+# Setup 3-in-1 Composite USB Gadget (ADB + CDC-NCM Ethernet + USB HID Keyboard)
+GADGET_DIR="/sys/kernel/config/usb_gadget/g1"
+CONFIG_DIR="$GADGET_DIR/configs/c.1"
+
+echo 0xef > "$GADGET_DIR/bDeviceClass" 2>/dev/null
+echo 0x02 > "$GADGET_DIR/bDeviceSubClass" 2>/dev/null
+echo 0x01 > "$GADGET_DIR/bDeviceProtocol" 2>/dev/null
+
+rm -f "$CONFIG_DIR"/ncm.* "$CONFIG_DIR"/hid.* 2>/dev/null
+
+mkdir -p "$GADGET_DIR/functions/ncm.usb0"
+echo "42:69:70:68:79:01" > "$GADGET_DIR/functions/ncm.usb0/host_addr"
+echo "42:69:70:68:79:02" > "$GADGET_DIR/functions/ncm.usb0/dev_addr"
+ln -sf "$GADGET_DIR/functions/ncm.usb0" "$CONFIG_DIR/ncm.usb0"
+
+mkdir -p "$GADGET_DIR/functions/hid.usb0"
+echo 1 > "$GADGET_DIR/functions/hid.usb0/subclass"
+echo 1 > "$GADGET_DIR/functions/hid.usb0/protocol"
+echo 8 > "$GADGET_DIR/functions/hid.usb0/report_length"
+printf '\x05\x01\x09\x06\xa1\x01\x05\x07\x19\xe0\x29\xe7\x15\x00\x25\x01\x75\x01\x95\x08\x81\x02\x95\x01\x75\x08\x81\x03\x95\x05\x75\x01\x05\x08\x19\x01\x29\x05\x91\x02\x95\x01\x75\x03\x91\x03\x95\x06\x75\x08\x15\x00\x25\x65\x05\x07\x19\x00\x29\x65\x81\x00\xc0' > "$GADGET_DIR/functions/hid.usb0/report_desc"
+ln -sf "$GADGET_DIR/functions/hid.usb0" "$CONFIG_DIR/hid.usb0"
+
+ln -sf "$GADGET_DIR/functions/ffs.adb" "$CONFIG_DIR/ffs.adb"
+
+echo 4100000.udc-controller > "$GADGET_DIR/UDC" 2>/dev/null
+echo "[OK] 3-in-1 Composite USB Gadget active (ADB + NCM + HID)"
+
+sleep 0.5
+ifconfig usb0 192.168.10.1 netmask 255.255.255.0 up 2>/dev/null
 
 # Fix adb_shell for seamless non-interactive execution
-cat << EOF_SHELL > /tmp/adb_shell
+cat << "EOF_SHELL" > /tmp/adb_shell
 #!/bin/sh
 export ENV="/etc/adb_profile"
 if [ "$1" = "-c" ]; then
     shift
-    exec /bin/sh -c "\$*"
+    exec /bin/sh -c "$*"
+elif [ -n "$1" ]; then
+    exec /bin/sh -c "$*"
 else
     exec /bin/sh
 fi
