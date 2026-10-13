@@ -57,9 +57,11 @@
 - [x] 定位 CMOS 高清摄像头传感器（`/dev/video0`，标准 V4L2 架构）
 
 ### 阶段四：专属座舱多模态交互闭环（当前攻坚阶段）
-- [ ] 编写 `touch_cockpit`（在 1600x600 屏幕右侧渲染 Action Bar，将触摸事件映射为 `send_hid_key`）
-- [ ] 编写 `gesture_detector`（V4L2 帧采集，160x120 极速降采样，✌️ V / 👌 OK / ✋ Stop 手势识别器）
-- [ ] 软硬件端到端闭环验证：用户比划 ✌️ 或 👌 手势 -> 宿主机终端自动敲入 `ready\n`
+- [x] 编写并交叉编译 `touch_cockpit`（在 1600x600 屏幕右侧渲染 Action Bar，将汇顶 GT911 触摸事件映射为 `send_hid_key`，物理屏幕已成功点亮动作条）
+- [x] 编写并交叉编译 `gesture_detector`（V4L2 多平面帧采集架构，160x120 极速降采样，✌️ V / 👌 OK / ✋ Stop 手势分类器）
+- [x] 查明全志 `sunxi-vin` 驱动规范（`V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE = 9`，传感器 `p1_mipi` 1280x720 30fps）
+- [x] 优化 `init_usb_monitor.sh` 规避 `setusbconfig` 提前绑定 UDC 缺陷，部署开机全量 3 合 1 外设与守护进程自启动
+- [ ] 软硬件端到端闭环验证：断电冷重启加载完整 USB HID 键盘，用户触摸屏幕或比划手势 -> 宿主机终端自动敲入 `ready\n`
 
 ---
 

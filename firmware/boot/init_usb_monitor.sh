@@ -33,26 +33,49 @@ fi
 # 4. Activate USB High-Speed OTG Device / 激活 USB 高速从机模式
 cat /sys/devices/platform/soc/usbc0/usb_device >/dev/null 2>&1
 
-# Start ADB baseline with proper initialization delay
-/usr/bin/setusbconfig adb
-/bin/adbd -D &
-sleep 0.5
-
 # Setup 3-in-1 Composite USB Gadget (ADB + CDC-NCM Ethernet + USB HID Keyboard)
 GADGET_DIR="/sys/kernel/config/usb_gadget/g1"
 CONFIG_DIR="$GADGET_DIR/configs/c.1"
 
-echo 0xef > "$GADGET_DIR/bDeviceClass" 2>/dev/null
-echo 0x02 > "$GADGET_DIR/bDeviceSubClass" 2>/dev/null
-echo 0x01 > "$GADGET_DIR/bDeviceProtocol" 2>/dev/null
+[ -d /sys/kernel/config/usb_gadget ] || mount -t configfs none /sys/kernel/config
+mkdir -p "$GADGET_DIR"
 
-rm -f "$CONFIG_DIR"/ncm.* "$CONFIG_DIR"/hid.* 2>/dev/null
+# 1. Base USB IDs & IAD Composite Device Class
+echo 0x18d1 > "$GADGET_DIR/idVendor"
+echo 0xd002 > "$GADGET_DIR/idProduct"
+echo 0x0200 > "$GADGET_DIR/bcdUSB"
+echo 0x0100 > "$GADGET_DIR/bcdDevice"
+echo 0xef   > "$GADGET_DIR/bDeviceClass"
+echo 0x02   > "$GADGET_DIR/bDeviceSubClass"
+echo 0x01   > "$GADGET_DIR/bDeviceProtocol"
 
+mkdir -p "$GADGET_DIR/strings/0x409"
+echo "Allwinner Technology Inc." > "$GADGET_DIR/strings/0x409/manufacturer"
+echo "AGY Physical Cockpit"      > "$GADGET_DIR/strings/0x409/product"
+echo "20080411"                  > "$GADGET_DIR/strings/0x409/serialnumber"
+
+# 2. Configuration Descriptor
+mkdir -p "$CONFIG_DIR"
+echo 0x80 > "$CONFIG_DIR/bmAttributes"
+echo 500  > "$CONFIG_DIR/MaxPower"
+mkdir -p "$CONFIG_DIR/strings/0x409"
+echo "ADB + CDC-NCM Ethernet + HID Keyboard" > "$CONFIG_DIR/strings/0x409/configuration"
+
+# 3. Create Function: ffs.adb
+mkdir -p "$GADGET_DIR/functions/ffs.adb"
+[ -d /dev/usb-ffs/adb ] || {
+    mkdir -p /dev/usb-ffs/adb
+    mount -o uid=2000,gid=2000 -t functionfs adb /dev/usb-ffs/adb/
+}
+ln -sf "$GADGET_DIR/functions/ffs.adb" "$CONFIG_DIR/ffs.adb"
+
+# 4. Create Function: ncm.usb0 (CDC-NCM Virtual Ethernet)
 mkdir -p "$GADGET_DIR/functions/ncm.usb0"
 echo "42:69:70:68:79:01" > "$GADGET_DIR/functions/ncm.usb0/host_addr"
 echo "42:69:70:68:79:02" > "$GADGET_DIR/functions/ncm.usb0/dev_addr"
 ln -sf "$GADGET_DIR/functions/ncm.usb0" "$CONFIG_DIR/ncm.usb0"
 
+# 5. Create Function: hid.usb0 (USB HID Keyboard /dev/hidg0)
 mkdir -p "$GADGET_DIR/functions/hid.usb0"
 echo 1 > "$GADGET_DIR/functions/hid.usb0/subclass"
 echo 1 > "$GADGET_DIR/functions/hid.usb0/protocol"
@@ -60,8 +83,11 @@ echo 8 > "$GADGET_DIR/functions/hid.usb0/report_length"
 printf '\x05\x01\x09\x06\xa1\x01\x05\x07\x19\xe0\x29\xe7\x15\x00\x25\x01\x75\x01\x95\x08\x81\x02\x95\x01\x75\x08\x81\x03\x95\x05\x75\x01\x05\x08\x19\x01\x29\x05\x91\x02\x95\x01\x75\x03\x91\x03\x95\x06\x75\x08\x15\x00\x25\x65\x05\x07\x19\x00\x29\x65\x81\x00\xc0' > "$GADGET_DIR/functions/hid.usb0/report_desc"
 ln -sf "$GADGET_DIR/functions/hid.usb0" "$CONFIG_DIR/hid.usb0"
 
-ln -sf "$GADGET_DIR/functions/ffs.adb" "$CONFIG_DIR/ffs.adb"
+# 6. Start ADB daemon to initialize FunctionFS endpoints
+/bin/adbd -D &
+sleep 0.5
 
+# 7. Bind UDC controller with all 3 functions active
 echo 4100000.udc-controller > "$GADGET_DIR/UDC" 2>/dev/null
 echo "[OK] 3-in-1 Composite USB Gadget active (ADB + NCM + HID)"
 
@@ -87,7 +113,18 @@ mount --bind /tmp/adb_shell /bin/adb_shell 2>/dev/null
 # 5. Enable Telnet Daemon for network debug
 telnetd -l /bin/sh 2>/dev/null &
 
-# 6. FOREVER SUPERVISOR LOOP: Block rcS from EVER reaching S70app / cdr!
+# 6. Launch Multimodal Interaction Daemons (Touch Action Bar + Visual Gesture AI)
+if [ -x /mnt/sdcard/touch_cockpit ]; then
+    /mnt/sdcard/touch_cockpit >/tmp/touch.log 2>&1 &
+    echo "[OK] Touch Cockpit controller active"
+fi
+
+if [ -x /mnt/sdcard/gesture_detector ]; then
+    /mnt/sdcard/gesture_detector >/tmp/gesture.log 2>&1 &
+    echo "[OK] Visual Gesture Detector active"
+fi
+
+# 7. FOREVER SUPERVISOR LOOP: Block rcS from EVER reaching S70app / cdr!
 # 阻断原厂 rcS 脚本继续执行，彻底隔离原厂 cdr 行车记录仪应用
 echo "[OK] Cockpit supervisor loop active (factory cdr fully blocked)..."
 while true; do

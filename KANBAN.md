@@ -57,9 +57,11 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 - [x] Identified CMOS camera sensor on `/dev/video0` (V4L2)
 
 ### Phase 4: Multimodal Cockpit Interaction (Current Phase)
-- [ ] Implement `touch_cockpit` (Action bar on 1600x600 screen, mapping touch taps to `send_hid_key`)
-- [ ] Implement `gesture_detector` (V4L2 frame grabber, 160x120 downsampler, ✌️ V / 👌 OK / ✋ Stop classifier)
-- [ ] End-to-end physical verification: user makes hand gesture -> host terminal receives `ready\n`
+- [x] Implemented and cross-compiled `touch_cockpit` (Action Bar rendered on 1600x600 display, mapping Goodix GT911 touch events to `send_hid_key`)
+- [x] Implemented and cross-compiled `gesture_detector` (V4L2 multi-planar frame grabber, 160x120 downsampler, ✌️ V / 👌 OK / ✋ Stop classifier)
+- [x] Identified Allwinner `sunxi-vin` driver architecture (`V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE = 9`, `p1_mipi` 1280x720 30fps sensor)
+- [x] Optimized `init_usb_monitor.sh` to prevent premature UDC binding and auto-launch all interaction daemons at boot
+- [ ] End-to-end multimodal physical verification: power cycle to bind USB HID keyboard -> user taps screen or gestures -> host terminal receives `ready\n`
 
 ---
 
