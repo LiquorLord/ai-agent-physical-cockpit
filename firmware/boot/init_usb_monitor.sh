@@ -33,8 +33,10 @@ fi
 # 4. Activate USB High-Speed OTG Device / 激活 USB 高速从机模式
 cat /sys/devices/platform/soc/usbc0/usb_device >/dev/null 2>&1
 
-# Always ensure base ADB connectivity first
+# Start ADB baseline with proper initialization delay
 /usr/bin/setusbconfig adb
+/bin/adbd -D &
+sleep 0.5
 echo 4100000.udc-controller > /sys/kernel/config/usb_gadget/g1/UDC 2>/dev/null
 echo "[OK] Baseline USB ADB active"
 
@@ -55,18 +57,12 @@ mount --bind /tmp/adb_shell /bin/adb_shell 2>/dev/null
 # 5. Enable Telnet Daemon for network debug
 telnetd -l /bin/sh 2>/dev/null &
 
-# 6. Try upgrading to full USB Composite Gadget (CDC-NCM + HID) in background
-if [ -x /mnt/sdcard/setup_gadget.sh ]; then
-    (
-        sleep 2
-        /mnt/sdcard/setup_gadget.sh > /tmp/gadget.log 2>&1
-    ) &
-fi
-
-# 7. Start Native TCP Display Stream Server / 启动原生高性能显示接收器
-if [ -x /mnt/sdcard/fb_receiver ]; then
-    echo "[OK] Starting /mnt/sdcard/fb_receiver on :5900..."
-    /mnt/sdcard/fb_receiver &
-fi
-
-echo "[OK] Cockpit boot initialization complete!"
+# 6. FOREVER SUPERVISOR LOOP: Block rcS from EVER reaching S70app / cdr!
+# 阻断原厂 rcS 脚本继续执行，彻底隔离原厂 cdr 行车记录仪应用
+echo "[OK] Cockpit supervisor loop active (factory cdr fully blocked)..."
+while true; do
+    if [ -x /mnt/sdcard/fb_receiver ]; then
+        /mnt/sdcard/fb_receiver
+    fi
+    sleep 1
+done
