@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -78,15 +79,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	arg := os.Args[1]
+
+	// Trigger on-screen visual feedback on touch_cockpit
+	if conn, err := net.Dial("udp", "127.0.0.1:8889"); err == nil {
+		conn.Write([]byte(arg))
+		conn.Close()
+	}
+
 	devPath := "/dev/hidg0"
 	fd, err := os.OpenFile(devPath, os.O_WRONLY, 0666)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error opening %s: %v\n", devPath, err)
-		os.Exit(1)
+		// Normal fallback when running under ADB mode
+		return
 	}
 	defer fd.Close()
-
-	arg := os.Args[1]
 
 	if arg == "text" && len(os.Args) >= 3 {
 		text := os.Args[2]

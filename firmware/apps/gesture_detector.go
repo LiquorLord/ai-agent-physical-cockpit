@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"syscall"
@@ -118,40 +118,19 @@ type FbVarScreeninfo struct {
 	Reserved                                          [4]uint32
 }
 
-func flashFeedbackBorder(colorRGB565 uint16) {
-	fb, err := os.OpenFile("/dev/fb0", os.O_RDWR, 0666)
-	if err != nil {
-		return
+func triggerVisualFeedback(action string) {
+	conn, err := net.Dial("udp", "127.0.0.1:8889")
+	if err == nil {
+		defer conn.Close()
+		conn.Write([]byte(action))
 	}
-	defer fb.Close()
-
-	var v FbVarScreeninfo
-	syscall.Syscall(syscall.SYS_IOCTL, fb.Fd(), FBIOGET_VSCREENINFO, uintptr(unsafe.Pointer(&v)))
-	v.Activate = FB_ACTIVATE_NOW | FB_ACTIVATE_FORCE
-
-	// Draw 10px outer border
-	border := 10
-	pixelBytes := make([]byte, 2)
-	pixelBytes[0] = byte(colorRGB565 & 0xFF)
-	pixelBytes[1] = byte((colorRGB565 >> 8) & 0xFF)
-
-	// Top & Bottom strips
-	strip := make([]byte, ScreenWidth*border*2)
-	for i := 0; i < len(strip); i += 2 {
-		strip[i] = pixelBytes[0]
-		strip[i+1] = pixelBytes[1]
-	}
-
-	fb.Seek(0, io.SeekStart)
-	fb.Write(strip)
-	fb.Seek(int64((ScreenHeight-border)*ScreenWidth*2), io.SeekStart)
-	fb.Write(strip)
-
-	syscall.Syscall(syscall.SYS_IOCTL, fb.Fd(), FBIOPAN_DISPLAY, uintptr(unsafe.Pointer(&v)))
 }
 
 func sendGestureKey(action string) {
 	log.Printf("[gesture_detector] >>> TRIGGER ACTION: %s <<<", action)
+
+	// Trigger high-contrast screen feedback on touch_cockpit (full-screen border glow + button highlight)
+	triggerVisualFeedback(action)
 
 	// Append to /tmp/cockpit_event.log for host companion monitoring
 	if f, err := os.OpenFile("/tmp/cockpit_event.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666); err == nil {
@@ -355,10 +334,9 @@ func main() {
 	log.Printf("[+] User-facing camera stream active on %s! Monitoring for ✌️ V / 👌 OK / ✋ Stop gestures...", devPath)
 
 	var (
-		consecutiveV   = 0
-		consecutiveOK  = 0
-		consecutiveStp = 0
-		lastTrigger    time.Time
+		consecutiveReady = 0
+		consecutiveStp   = 0
+		lastTrigger      time.Time
 	)
 
 	frameIndex := 0
@@ -393,8 +371,8 @@ func main() {
 		frameData := buffers[dqbuf.index].start[:buffers[dqbuf.index].length]
 		frameIndex++
 
-		// Process every 3rd frame (~8-10 fps processing rate) to conserve CPU
-		if frameIndex%3 == 0 {
+		// Process every 2nd frame (~12.5 fps processing rate) for snappy responsiveness
+		if frameIndex%2 == 0 {
 			// Fast spatial downsampling with YCbCr skin detection
 			idx := 0
 			for y := 0; y < capHeight; y += dsStep {
@@ -417,41 +395,36 @@ func main() {
 
 			pose := classifyHandPose(subSkin, subW, subH)
 
-			if pose == "V_SIGN" {
-				consecutiveV++
-				consecutiveOK = 0
+			if pose == "V_SIGN" || pose == "OK_SIGN" {
+				consecutiveReady++
 				consecutiveStp = 0
-				log.Println("[*] Detected potential ✌️ V-Sign...")
-			} else if pose == "OK_SIGN" {
-				consecutiveOK++
-				consecutiveV = 0
-				consecutiveStp = 0
-				log.Println("[*] Detected potential 👌 OK-Sign...")
+				log.Printf("[*] Detected potential confirm gesture (%s, streak=%d)...", pose, consecutiveReady)
 			} else if pose == "STOP_SIGN" {
 				consecutiveStp++
-				consecutiveV = 0
-				consecutiveOK = 0
-				log.Println("[*] Detected potential ✋ Stop-Sign...")
+				consecutiveReady = 0
+				log.Printf("[*] Detected potential STOP gesture (streak=%d)...", consecutiveStp)
 			} else {
-				consecutiveV = 0
-				consecutiveOK = 0
-				consecutiveStp = 0
+				if consecutiveReady > 0 {
+					consecutiveReady--
+				}
+				if consecutiveStp > 0 {
+					consecutiveStp--
+				}
 			}
 
-			// Temporal debounce: 3 consecutive frames
-			if time.Since(lastTrigger) > 2*time.Second {
-				if consecutiveV >= 3 || consecutiveOK >= 3 {
+			// Temporal debounce: 2 consecutive frames, 1.5s cooldown
+			if time.Since(lastTrigger) > 1500*time.Millisecond {
+				if consecutiveReady >= 2 {
 					lastTrigger = time.Now()
-					consecutiveV = 0
-					consecutiveOK = 0
+					consecutiveReady = 0
+					consecutiveStp = 0
 					log.Printf("[+] GESTURE CONFIRMED: ✌️/👌 detected! Emitting 'ready'...")
-					go flashFeedbackBorder(0x07E0) // Emerald Green border flash
 					go sendGestureKey("ready")
-				} else if consecutiveStp >= 3 {
+				} else if consecutiveStp >= 2 {
 					lastTrigger = time.Now()
+					consecutiveReady = 0
 					consecutiveStp = 0
 					log.Printf("[+] GESTURE CONFIRMED: ✋ STOP detected! Emitting 'ctrl+c'...")
-					go flashFeedbackBorder(0xF800) // Crimson Red border flash
 					go sendGestureKey("ctrl+c")
 				}
 			}

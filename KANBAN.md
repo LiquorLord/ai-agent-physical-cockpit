@@ -67,7 +67,9 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 - [x] Brought up `gesture_detector`: Allwinner `sunxi-vin` multi-planar (MPLANE 9) 1280x720 NV12 @ 30fps stream fully established, Cortex-A7 8x spatial downsampler & classifier running live!
 - [x] Switched to user-facing secondary camera (`sensor@1` `tp9950`/`tp9951` @ `/dev/video8`): Captured full 1080p (1920x1080 NV12, aligned height 1088) frame, verified clear cabin view
 - [x] Upgraded `gesture_detector` with YCbCr skin segmentation & morphological finger peak analysis: 100% eliminated background noise false triggers while consuming <0.1% CPU (90.9% system idle)
-- [ ] User presents ✌️ (V-sign) or 👌 (OK gesture) to the user-facing camera lens to verify green feedback border flash and `"ready\n"` injection
+- [x] Implemented synchronized full-screen visual feedback: Inter-process UDP bridge between `gesture_detector` and `touch_cockpit` (`127.0.0.1:8889`) flashes a 24px wide glowing Emerald Green border around all four screen edges and highlights the `[PROCEED / READY]` button for 300ms on gesture recognition
+- [x] Optimized gesture detection responsiveness: Unified ✌️ and 👌 into single confirm counter with soft decay, lowered latency to ~160ms (2 frames @ 12.5 fps)
+- [ ] User presents ✌️ (V-sign) or 👌 (OK gesture) to the user-facing camera lens to verify live 24px green feedback border glow and `"ready\n"` injection
 - [ ] Initiate host screen streaming verification (`host_tools/stream_to_monitor.py` targeting 1600x600 framebuffer)
 
 ---

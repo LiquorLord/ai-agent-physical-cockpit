@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"os/exec"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -84,6 +87,7 @@ type FbVarScreeninfo struct {
 }
 
 type CockpitUI struct {
+	mu     sync.Mutex
 	fbFile *os.File
 	fbMem  []uint16
 	vinfo  FbVarScreeninfo
@@ -175,7 +179,7 @@ func (ui *CockpitUI) DrawText(x, y int, text string, scale int, color uint16) {
 	}
 }
 
-func (ui *CockpitUI) RenderActionBar(activeButton int) {
+func (ui *CockpitUI) renderButtons(activeButton int) {
 	// 1. Right Action Bar Container (X: 1200..1600)
 	ui.DrawRect(1200, 0, 400, ScreenHeight, ColorDarkGray)
 	ui.DrawRect(1198, 0, 4, ScreenHeight, ColorGray) // Divider border
@@ -203,8 +207,46 @@ func (ui *CockpitUI) RenderActionBar(activeButton int) {
 	ui.DrawFrame(1240, 330, 320, 220, 4, btn2Border)
 	ui.DrawText(1320, 390, "STOP", 4, ColorWhite)
 	ui.DrawText(1325, 450, "ABORT", 3, ColorRedLight)
+}
 
+func (ui *CockpitUI) RenderActionBar(activeButton int) {
+	ui.mu.Lock()
+	defer ui.mu.Unlock()
+	ui.renderButtons(activeButton)
 	ui.Flip()
+}
+
+func (ui *CockpitUI) FlashFeedback(action string) {
+	ui.mu.Lock()
+	if action == "ready" {
+		ui.DrawFrame(0, 0, ScreenWidth, ScreenHeight, 24, ColorGreen)
+		ui.renderButtons(1)
+		ui.Flip()
+		ui.mu.Unlock()
+
+		time.Sleep(300 * time.Millisecond)
+
+		ui.mu.Lock()
+		ui.DrawFrame(0, 0, ScreenWidth, ScreenHeight, 24, ColorBlack)
+		ui.renderButtons(0)
+		ui.Flip()
+		ui.mu.Unlock()
+	} else if action == "ctrl+c" {
+		ui.DrawFrame(0, 0, ScreenWidth, ScreenHeight, 24, ColorRed)
+		ui.renderButtons(2)
+		ui.Flip()
+		ui.mu.Unlock()
+
+		time.Sleep(300 * time.Millisecond)
+
+		ui.mu.Lock()
+		ui.DrawFrame(0, 0, ScreenWidth, ScreenHeight, 24, ColorBlack)
+		ui.renderButtons(0)
+		ui.Flip()
+		ui.mu.Unlock()
+	} else {
+		ui.mu.Unlock()
+	}
 }
 
 func (ui *CockpitUI) Flip() {
@@ -275,6 +317,34 @@ func main() {
 		ui.RenderActionBar(0)
 		log.Println("[+] Action Bar rendered on 1600x600 screen")
 	}
+
+	// Start inter-process visual feedback listener (from gesture_detector)
+	go func() {
+		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:8889")
+		if err != nil {
+			log.Printf("[-] UDP resolve error: %v", err)
+			return
+		}
+		conn, err := net.ListenUDP("udp", addr)
+		if err != nil {
+			log.Printf("[-] UDP listen error: %v", err)
+			return
+		}
+		defer conn.Close()
+		log.Println("[+] Inter-process visual feedback listener active on UDP :8889")
+		recvBuf := make([]byte, 64)
+		for {
+			n, _, err := conn.ReadFrom(recvBuf)
+			if err != nil {
+				continue
+			}
+			action := strings.TrimSpace(string(recvBuf[:n]))
+			log.Printf("[touch_cockpit] Received gesture visual feedback event: %s", action)
+			if ui != nil {
+				go ui.FlashFeedback(action)
+			}
+		}
+	}()
 
 	evFile, err := os.Open("/dev/input/event0")
 	if err != nil {
