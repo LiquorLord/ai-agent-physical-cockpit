@@ -88,16 +88,25 @@
 - [x] 宿主机 Udev 即插即用规则：编写 `host_tools/udev/99-agy-cockpit.rules` 与自动化安装脚本 `install_udev.sh`，赋予普通用户免 Root 访问权限
 - [x] 端到端闭环验证：实测 `./cockpit` 流式推流与硬件按键交互毫秒级响应，零死锁、零残留进程
 
-### Phase 7: AGY 终端进驻实体座舱与四键中控实机落地 (当前阶段)
+### Phase 7: AGY 终端进驻实体座舱与四键中控实机落地
 - [x] 四键敏捷结对编程中控台：将右侧动作条重构为 4 个独立物理按键，完美闭环 Antigravity AI 结对开发流程：
   - 🟢 **【PROCEED】**（$Y: 46..154$）：一键批准方案或继续执行（注入 `proceed\n`）
   - 🔵 **【GRILL-ME】**（$Y: 166..274$）：一键切入架构深度审问模式（注入 `/grill-me\n`）
   - 🟣 **【PLAN】**（$Y: 286..394$）：一键发起结构化方案制定（注入 `/plan\n`）
   - 🔴 **【STOP】**（$Y: 406..514$）：随时紧急叫停或打断当前任务（注入 `\x03` Ctrl+C）
-- [x] 固件交叉编译与部署：在 `homelink-build` 隔离容器中交叉编译 ARMv7-A 静态二进制文件，推送到 SD 卡并由守护进程接管运行（PID 2287）
+- [x] 固件交叉编译与部署：在容器中交叉编译 ARMv7-A 静态二进制文件，推送到 SD 卡并由守护进程接管运行（PID 2287）
 - [x] PTY 桥接器扩展：升级 `host_tools/cockpit_agent.py`，完整解析并分发四键动作，物理按压零键盘输入
 - [x] 桌面与 i3-wm 浮动窗口集成：重构 `./cockpit`，自动拉起 1200x600 无边框极简 Alacritty 终端并设为 i3 浮动窗口，自动锁定并低延迟推流
 - [x] 终端全链路实机闭环：物理带鱼屏左侧 1200x600 视口完整呈现 `agy` 交互控制台，右侧四键实时触控响应，宿主机双显示器 100% 释放留给代码与浏览器
+
+### Phase 8: 凤凰计划（Project Phoenix）—— 独立 Buildroot 系统、i3-wm 与 USB 3-in-1 复合设备 (当前阶段)
+- [x] 专属编译容器环境：创建并启动独立的 Incus 容器 `allwinner-build`（Ubuntu 24.04 amd64，IP 10.179.110.199），配置 `raw.idmap: both 1000 1000` 无缝权限映射
+- [x] 持久化数据卷解耦：宿主机工作区 `/home/wchen/nas_home/shares/workspace/allwinner` 挂载至容器内 `/workspace`，严格保证宿主机零污染，并与 `homelink-build`（OpenWrt 工程）彻底物理隔离
+- [x] 交叉编译工具链就绪：容器内安装 `gcc-arm-linux-gnueabihf` 13.3.0、`device-tree-compiler`、`u-boot-tools`、`build-essential` 与 Go 1.22
+- [ ] Buildroot 2024 独立根文件系统配置（armv7-a hf、musl 轻量 libc、Xorg 2D 与 i3-wm）
+- [ ] 加固版 Linux 4.9.191 内核重编译（显式开启 `CONFIG_USB_F_NCM=y`、`CONFIG_USB_F_HID=y`，保留 DE2.0/双摄/ATBM 硬件加速）
+- [ ] USB 3-in-1 复合设备落地（ADB + CDC-NCM 虚拟以太网 + USB HID 物理键盘）
+- [ ] 本地独立 i3-wm 平铺桌面部署与外设全激活（京东方 MIPI 屏、GT911 触摸、双摄像头、ATBM6165 Wi-Fi 与蓝牙）
 
 ---
 
@@ -114,6 +123,8 @@
   - `fb_receiver`: Mmap 硬件双分区帧缓冲接收服务（监听端口 5900 与 5901，维护 `/tmp/stream_fps`）
   - `touch_cockpit`: 汇顶 GT911 四键动作条服务 & 遥测 HUD（`/dev/input/event0`，PID 2287）
   - `init_usb_monitor.sh`: 进程自动拉起守护监控
+- **专属编译容器在线**：
+  - `allwinner-build`: Incus 独立容器（Ubuntu 24.04 amd64，IP 10.179.110.199），挂载 `/workspace` 数据卷，就绪 ARMv7-A 交叉编译工具链
 - **宿主机端工具链**：
   - `./cockpit`: 统一控制台入口（管理专用 Alacritty 终端、ffmpeg 推流与 PTY 桥接）
   - `host_tools/cockpit_agent.py`: PTY Master 交互式终端伴侣
@@ -124,8 +135,8 @@
 
 ## 5. 当前第一步即时行动
 
-1. 伸手触碰带鱼屏上的 4 个实体按键与 `agy` 展开交互；
-2. 运行 `sudo host_tools/udev/install_udev.sh` 固化免 Root Udev 规则。
+1. 在 `allwinner-build` 容器内配置拉取 Buildroot 源码树；
+2. 组织 Linux 4.9.191 内核树并开启 USB 复合设备（NCM + HID）编译。
 
 
 

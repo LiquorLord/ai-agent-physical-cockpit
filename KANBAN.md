@@ -88,16 +88,25 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 - [x] Host Udev Rules & Installer: Built `host_tools/udev/99-agy-cockpit.rules` and `install_udev.sh` for non-root USB access and seamless plug-and-play
 - [x] Live Verified: Verified full `./cockpit` execution pipeline with simultaneous test streaming and hardware touch event reception
 
-### Phase 7: AGY Terminal Migration & 4-Button Tactile Cockpit (Current Phase)
+### Phase 7: AGY Terminal Migration & 4-Button Tactile Cockpit
 - [x] 4-Button Agile Pairing Console: Upgraded Action Bar to 4 tactile buttons tailored for Antigravity AI pair programming:
   - 🟢 **【PROCEED】** ($Y: 46..154$): Sends `proceed\n` to approve plans or continue execution
   - 🔵 **【GRILL-ME】** ($Y: 166..274$): Sends `/grill-me\n` to trigger interactive design interviews
   - 🟣 **【PLAN】** ($Y: 286..394$): Sends `/plan\n` to enter structured planning mode
   - 🔴 **【STOP】** ($Y: 406..514$): Sends `\x03` (Ctrl+C) to immediately abort execution
-- [x] Firmware Cross-Compilation: Cross-compiled `firmware/apps/touch_cockpit.go` in `homelink-build` container (Go 1.26 linux/armv7), deployed to target `/mnt/sdcard/touch_cockpit`, active under supervisor PID 2287
+- [x] Firmware Cross-Compilation: Cross-compiled `firmware/apps/touch_cockpit.go` in container, deployed to target `/mnt/sdcard/touch_cockpit`, active under supervisor PID 2287
 - [x] PTY Bridge Extension: Expanded `host_tools/cockpit_agent.py` to parse and inject all 4 tactile actions with zero keyboard typing
 - [x] Desktop Integration & i3 Floating Window: Upgraded `./cockpit` to automatically spawn a dedicated borderless Alacritty window running `agy`, configured to float at 1200x600 in `i3-wm`
 - [x] Full-Pipeline Verification: Streamed live `agy` CLI to left 1200x600 viewport of physical 10.26" screen, leaving host dual monitors 100% free for code editing
+
+### Phase 8: Project Phoenix — Standalone Buildroot System with i3-wm & 3-in-1 USB Composite (Current Phase)
+- [x] Dedicated Container Infrastructure: Launched dedicated Incus container `allwinner-build` (Ubuntu 24.04 amd64, IP 10.179.110.199) with `raw.idmap: both 1000 1000` mapping
+- [x] Persistent Volume Decoupling: Mounted host workspace `/home/wchen/nas_home/shares/workspace/allwinner` to `/workspace` inside container, ensuring zero host pollution and complete isolation from `homelink-build` (OpenWrt)
+- [x] Build Toolchain Provisioning: Installed `gcc-arm-linux-gnueabihf` 13.3.0, `device-tree-compiler`, `u-boot-tools`, `build-essential`, and Go 1.22 inside `allwinner-build`
+- [ ] Buildroot 2024 Base System & Rootfs Configuration (armv7-a hf, musl, Xorg 2D, i3-wm)
+- [ ] Hardened Linux 4.9.191 Kernel Recompilation (`CONFIG_USB_F_NCM=y`, `CONFIG_USB_F_HID=y`, full DE2.0/VIN/ATBM hardware acceleration)
+- [ ] 3-in-1 USB Composite Gadget Configuration (ADB + CDC-NCM Ethernet + USB HID Keyboard)
+- [ ] Native i3-wm Tiling Environment Deployment & Peripheral Activation (BOE MIPI display, GT911 touch, dual cameras, ATBM6165 Wi-Fi, Bluetooth)
 
 ---
 
@@ -114,8 +123,10 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
   - `fb_receiver`: Mmap dual-zone display receiver on ports 5900 (1200x600) & 5901 (1600x600)
   - `touch_cockpit`: Goodix GT911 4-Button Action Bar controller & Telemetry HUD on `/dev/input/event0` (PID 2287)
   - `init_usb_monitor.sh`: Auto-respawn supervisor for daemons
-- **Host Processes Active**:
-  - `./cockpit`: Background task running dedicated Alacritty window + ffmpeg streaming + PTY bridge
+- **Dedicated Build Container Active**:
+  - `allwinner-build`: Incus container (Ubuntu 24.04 amd64, IP 10.179.110.199) with `/workspace` volume mount and ARMv7-A cross-toolchain installed
+- **Host Tools Ready**:
+  - `./cockpit`: Unified executive console entrypoint
   - `host_tools/cockpit_agent.py`: PTY Master interactive companion agent
   - `host_tools/stream_to_monitor.py`: Streaming client locked on `AGY-Cockpit` window
 
@@ -123,8 +134,8 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 
 ## 5. Immediate Next Steps
 
-1. Interact with `agy` directly on the physical screen using the 4 tactile buttons;
-2. Run `sudo host_tools/udev/install_udev.sh` to install permanent host udev permissions.
+1. Configure Buildroot tree inside `allwinner-build` container;
+2. Setup kernel tree and enable USB Composite Gadget drivers (NCM + HID).
 
 
 
