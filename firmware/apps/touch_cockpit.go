@@ -338,12 +338,9 @@ func main() {
 		} else if ev.Type == EV_SYN {
 			if ev.Code == SYN_REPORT || ev.Code == SYN_MT_REPORT {
 				if hasCoord && pressure > 0 {
-					// Coordinate transformation from 600x1600 portrait to 1600x600 landscape
-					screenX := int(rawY)
-					screenY := 600 - int(rawX)
-					if screenY < 0 {
-						screenY = int(rawX) // fallback orientation
-					}
+					// 1:1 Direct mapping (hardware GT911 firmware outputs in native 1600x600 landscape)
+					screenX := int(rawX)
+					screenY := int(rawY)
 
 					log.Printf("[*] Touch detected: Raw(%d, %d) -> Screen(%d, %d)", rawX, rawY, screenX, screenY)
 
