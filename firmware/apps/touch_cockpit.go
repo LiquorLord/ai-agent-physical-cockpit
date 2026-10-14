@@ -27,6 +27,7 @@ const (
 	EV_KEY             = 0x01
 	EV_ABS             = 0x03
 	SYN_REPORT         = 0x00
+	SYN_MT_REPORT      = 0x02
 	BTN_TOUCH          = 0x14a // 330
 	ABS_X              = 0x00
 	ABS_Y              = 0x01
@@ -35,6 +36,7 @@ const (
 	ABS_MT_POSITION_X  = 0x35 // 53
 	ABS_MT_POSITION_Y  = 0x36 // 54
 	ABS_MT_TRACKING_ID = 0x39 // 57
+	ABS_MT_PRESSURE    = 0x3a // 58
 
 	ScreenWidth  = 1600
 	ScreenHeight = 600
@@ -216,6 +218,12 @@ func (ui *CockpitUI) Flip() {
 func sendKeystroke(action string) {
 	log.Printf("[touch_cockpit] Triggering Action: %s", action)
 
+	// Append to /tmp/cockpit_event.log for host companion monitoring
+	if f, err := os.OpenFile("/tmp/cockpit_event.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666); err == nil {
+		fmt.Fprintf(f, "%s\n", action)
+		f.Close()
+	}
+
 	// Direct attempt via /dev/hidg0
 	hid, err := os.OpenFile("/dev/hidg0", os.O_WRONLY, 0666)
 	if err == nil {
@@ -277,7 +285,8 @@ func main() {
 	var (
 		rawX       int32 = 0
 		rawY       int32 = 0
-		touchDown        = false
+		pressure   int32 = 1 // default positive until explicit 0
+		hasCoord         = false
 		lastAction time.Time
 	)
 
@@ -295,65 +304,87 @@ func main() {
 		ev.Code = binary.LittleEndian.Uint16(buf[10:12])
 		ev.Value = int32(binary.LittleEndian.Uint32(buf[12:16]))
 
+		// Log raw events for 100% observability
+		log.Printf("[RAW_EV] Type=0x%02x Code=0x%02x Val=%d", ev.Type, ev.Code, ev.Value)
+
 		if ev.Type == EV_ABS {
 			switch ev.Code {
 			case ABS_MT_POSITION_X, ABS_X:
 				rawX = ev.Value
+				hasCoord = true
 			case ABS_MT_POSITION_Y, ABS_Y:
 				rawY = ev.Value
+				hasCoord = true
+			case ABS_MT_PRESSURE:
+				pressure = ev.Value
+				if pressure > 0 {
+					hasCoord = true
+				}
 			case ABS_MT_TRACKING_ID:
 				if ev.Value == -1 {
-					touchDown = false
+					pressure = 0
+					hasCoord = false
 				} else {
-					touchDown = true
+					pressure = 1
 				}
 			}
 		} else if ev.Type == EV_KEY && ev.Code == BTN_TOUCH {
-			touchDown = (ev.Value == 1)
-		} else if ev.Type == EV_SYN && ev.Code == SYN_REPORT {
-			if touchDown {
-				// Coordinate transformation from 600x1600 portrait to 1600x600 landscape
-				screenX := int(rawY)
-				screenY := 600 - int(rawX)
-				if screenY < 0 {
-					screenY = int(rawX) // fallback orientation
-				}
-
-				// Debounce triggers by at least 800ms
-				if time.Since(lastAction) < 800*time.Millisecond {
-					continue
-				}
-
-				log.Printf("[*] Touch detected: Raw(%d, %d) -> Screen(%d, %d)", rawX, rawY, screenX, screenY)
-
-				// Button 1: [READY / PROCEED]
-				if screenX >= 1200 && screenY >= 50 && screenY <= 290 {
-					lastAction = time.Now()
-					if ui != nil {
-						ui.RenderActionBar(1) // Flash button 1
+			if ev.Value == 1 {
+				pressure = 1
+			} else {
+				pressure = 0
+				hasCoord = false
+			}
+		} else if ev.Type == EV_SYN {
+			if ev.Code == SYN_REPORT || ev.Code == SYN_MT_REPORT {
+				if hasCoord && pressure > 0 {
+					// Coordinate transformation from 600x1600 portrait to 1600x600 landscape
+					screenX := int(rawY)
+					screenY := 600 - int(rawX)
+					if screenY < 0 {
+						screenY = int(rawX) // fallback orientation
 					}
-					go sendKeystroke("ready")
-					go func() {
-						time.Sleep(200 * time.Millisecond)
-						if ui != nil {
-							ui.RenderActionBar(0)
+
+					log.Printf("[*] Touch detected: Raw(%d, %d) -> Screen(%d, %d)", rawX, rawY, screenX, screenY)
+
+					// Debounce triggers by at least 600ms
+					if time.Since(lastAction) >= 600*time.Millisecond {
+						// Button 1: [READY / PROCEED]
+						if screenX >= 1200 && screenY >= 50 && screenY <= 290 {
+							lastAction = time.Now()
+							log.Printf("[HIT] Button 1 [READY / PROCEED] Hit at Screen(%d, %d)!", screenX, screenY)
+							if ui != nil {
+								ui.RenderActionBar(1) // Flash button 1
+							}
+							go sendKeystroke("ready")
+							go func() {
+								time.Sleep(200 * time.Millisecond)
+								if ui != nil {
+									ui.RenderActionBar(0)
+								}
+							}()
+						} else if screenX >= 1200 && screenY >= 310 && screenY <= 560 {
+							// Button 2: [STOP / ABORT]
+							lastAction = time.Now()
+							log.Printf("[HIT] Button 2 [STOP / ABORT] Hit at Screen(%d, %d)!", screenX, screenY)
+							if ui != nil {
+								ui.RenderActionBar(2) // Flash button 2
+							}
+							go sendKeystroke("ctrl+c")
+							go func() {
+								time.Sleep(200 * time.Millisecond)
+								if ui != nil {
+									ui.RenderActionBar(0)
+								}
+							}()
 						}
-					}()
-				} else if screenX >= 1200 && screenY >= 310 && screenY <= 560 {
-					// Button 2: [STOP / ABORT]
-					lastAction = time.Now()
-					if ui != nil {
-						ui.RenderActionBar(2) // Flash button 2
 					}
-					go sendKeystroke("ctrl+c")
-					go func() {
-						time.Sleep(200 * time.Millisecond)
-						if ui != nil {
-							ui.RenderActionBar(0)
-						}
-					}()
+				}
+				if pressure == 0 {
+					hasCoord = false
 				}
 			}
 		}
 	}
 }
+
