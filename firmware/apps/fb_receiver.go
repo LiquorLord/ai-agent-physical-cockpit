@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -37,13 +38,20 @@ type FbVarScreeninfo struct {
 }
 
 const (
-	FrameWidth          = 1600
-	FrameHeight         = 600
-	BytesPerPix         = 2
-	FrameSize           = FrameWidth * FrameHeight * BytesPerPix // 1,920,000 bytes
-	ListenPort          = ":5900"
+	ScreenWidth        = 1600
+	ScreenHeight       = 600
+	BytesPerPix        = 2
+	ScreenStride       = ScreenWidth * BytesPerPix // 3200 bytes per line
+	FullFrameSize      = ScreenWidth * ScreenHeight * BytesPerPix // 1,920,000 bytes
+
+	DualZoneWidth      = 1200
+	DualZoneRowBytes   = DualZoneWidth * BytesPerPix // 2400 bytes per line
+	DualZoneFrameSize  = DualZoneWidth * ScreenHeight * BytesPerPix // 1,440,000 bytes
+
+	DualZonePort       = ":5900" // Left 1200x600 Content Viewport
+	FullScreenPort     = ":5901" // Full 1600x600 Display
+
 	FBIOGET_VSCREENINFO = 0x4600
-	FBIOPUT_VSCREENINFO = 0x4601
 	FBIOPAN_DISPLAY     = 0x4606
 	FB_ACTIVATE_NOW     = 0
 	FB_ACTIVATE_FORCE   = 128
@@ -65,16 +73,105 @@ func startWatchdogFeeder() {
 					time.Sleep(2 * time.Second)
 				}
 			}
-			// Retry every 50ms until acquired
 			time.Sleep(50 * time.Millisecond)
 		}
 	}()
 }
 
-func main() {
-	log.Printf("[fb_receiver] Starting V553 Framebuffer Receiver (%dx%d RGB565)...", FrameWidth, FrameHeight)
+type DisplayServer struct {
+	fbFile *os.File
+	fbMem  []byte
+	vinfo  FbVarScreeninfo
+	mu     sync.Mutex
+}
 
-	// Start background watchdog takeover immediately
+func (ds *DisplayServer) panDisplay() {
+	syscall.Syscall(syscall.SYS_IOCTL, ds.fbFile.Fd(), FBIOPAN_DISPLAY, uintptr(unsafe.Pointer(&ds.vinfo)))
+}
+
+func (ds *DisplayServer) handleDualZoneStream(conn net.Conn) {
+	remote := conn.RemoteAddr().String()
+	log.Printf("[+] Dual-Zone Stream connected from %s (1200x600 RGB565 -> Columns 0..1200)", remote)
+	defer conn.Close()
+
+	frameBuf := make([]byte, DualZoneFrameSize)
+	frameCount := 0
+	startTime := time.Now()
+
+	for {
+		_, err := io.ReadFull(conn, frameBuf)
+		if err != nil {
+			if err != io.EOF {
+				log.Printf("[-] Dual-Zone read error: %v", err)
+			}
+			break
+		}
+
+		ds.mu.Lock()
+		// Row-by-row blitting into columns 0..1200 (preserving right 400 columns for Action Bar)
+		for y := 0; y < ScreenHeight; y++ {
+			destOffset := y * ScreenStride
+			srcOffset := y * DualZoneRowBytes
+			copy(ds.fbMem[destOffset:destOffset+DualZoneRowBytes], frameBuf[srcOffset:srcOffset+DualZoneRowBytes])
+		}
+		ds.panDisplay()
+		ds.mu.Unlock()
+
+		frameCount++
+		if frameCount%100 == 0 {
+			elapsed := time.Since(startTime).Seconds()
+			fps := float64(frameCount) / elapsed
+			fmt.Printf("\r[*] Dual-Zone: blitted %d frames (%.1f FPS)...", frameCount, fps)
+		}
+	}
+
+	elapsed := time.Since(startTime).Seconds()
+	fps := float64(frameCount) / elapsed
+	log.Printf("\n[-] Dual-Zone client disconnected after %d frames (avg %.1f FPS). Ready for next stream.", frameCount, fps)
+}
+
+func (ds *DisplayServer) handleFullScreenStream(conn net.Conn) {
+	remote := conn.RemoteAddr().String()
+	log.Printf("[+] Full-Screen Stream connected from %s (1600x600 RGB565)", remote)
+	defer conn.Close()
+
+	frameBuf := make([]byte, FullFrameSize)
+	frameCount := 0
+	startTime := time.Now()
+
+	for {
+		_, err := io.ReadFull(conn, frameBuf)
+		if err != nil {
+			if err != io.EOF {
+				log.Printf("[-] Full-Screen read error: %v", err)
+			}
+			break
+		}
+
+		ds.mu.Lock()
+		copy(ds.fbMem[0:FullFrameSize], frameBuf[0:FullFrameSize])
+		ds.panDisplay()
+		ds.mu.Unlock()
+
+		frameCount++
+		if frameCount%100 == 0 {
+			elapsed := time.Since(startTime).Seconds()
+			fps := float64(frameCount) / elapsed
+			fmt.Printf("\r[*] Full-Screen: blitted %d frames (%.1f FPS)...", frameCount, fps)
+		}
+	}
+
+	elapsed := time.Since(startTime).Seconds()
+	fps := float64(frameCount) / elapsed
+	log.Printf("\n[-] Full-Screen client disconnected after %d frames (avg %.1f FPS). Ready for next stream.", frameCount, fps)
+}
+
+func main() {
+	log.Printf("[fb_receiver] Starting V553 High-Performance Dual-Zone Framebuffer Receiver...")
+	log.Printf("[fb_receiver] Port %s -> Dual-Zone (1200x600, preserving Action Bar)", DualZonePort)
+	log.Printf("[fb_receiver] Port %s -> Full-Screen (1600x600)", FullScreenPort)
+
+	// Takeover hardware watchdog
 	startWatchdogFeeder()
 
 	fb, err := os.OpenFile("/dev/fb0", os.O_RDWR, 0666)
@@ -83,82 +180,68 @@ func main() {
 	}
 	defer fb.Close()
 
-	// Query screeninfo for page flipping
+	// Memory map /dev/fb0 for direct zero-copy hardware framebuffer blitting
+	fbMem, err := syscall.Mmap(int(fb.Fd()), 0, FullFrameSize, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
+	if err != nil {
+		log.Fatalf("[!] Failed to mmap /dev/fb0: %v", err)
+	}
+	defer syscall.Munmap(fbMem)
+	log.Printf("[+] Hardware Framebuffer successfully mmap'ed (%d bytes)!", len(fbMem))
+
 	var v FbVarScreeninfo
 	syscall.Syscall(syscall.SYS_IOCTL, fb.Fd(), FBIOGET_VSCREENINFO, uintptr(unsafe.Pointer(&v)))
 	v.Activate = FB_ACTIVATE_NOW | FB_ACTIVATE_FORCE
 	v.Xoffset = 0
 	v.Yoffset = 0
 
-	// Handle graceful shutdown
+	ds := &DisplayServer{
+		fbFile: fb,
+		fbMem:  fbMem,
+		vinfo:  v,
+	}
+
+	// Setup listeners
+	lDual, err := net.Listen("tcp", DualZonePort)
+	if err != nil {
+		log.Fatalf("[!] Failed to listen on Dual-Zone port %s: %v", DualZonePort, err)
+	}
+	defer lDual.Close()
+
+	lFull, err := net.Listen("tcp", FullScreenPort)
+	if err != nil {
+		log.Fatalf("[!] Failed to listen on Full-Screen port %s: %v", FullScreenPort, err)
+	}
+	defer lFull.Close()
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	l, err := net.Listen("tcp", ListenPort)
-	if err != nil {
-		log.Fatalf("[!] Failed to listen on %s: %v", ListenPort, err)
-	}
-	defer l.Close()
-
-	log.Printf("[*] Listening on TCP %s (Waiting for host stream)...", ListenPort)
 
 	go func() {
 		<-sigChan
 		log.Println("[*] Terminating fb_receiver...")
-		l.Close()
+		lDual.Close()
+		lFull.Close()
 		fb.Close()
 		os.Exit(0)
 	}()
 
-	frameBuf := make([]byte, FrameSize)
-
-	for {
-		conn, err := l.Accept()
-		if err != nil {
-			select {
-			case <-sigChan:
-				return
-			default:
-				continue
-			}
-		}
-
-		remote := conn.RemoteAddr().String()
-		log.Printf("[+] Host stream connected from %s", remote)
-
-		frameCount := 0
+	// Dual-zone accept loop
+	go func() {
 		for {
-			_, err := io.ReadFull(conn, frameBuf)
+			conn, err := lDual.Accept()
 			if err != nil {
-				if err != io.EOF {
-					log.Printf("[-] Read error: %v", err)
-				}
-				break
+				return
 			}
-
-			// Seek to beginning and blit full frame to fb0
-			_, err = fb.Seek(0, 0)
-			if err != nil {
-				log.Printf("[-] Seek error: %v", err)
-				break
-			}
-
-			_, err = fb.Write(frameBuf)
-			if err != nil {
-				log.Printf("[-] Write error: %v", err)
-				break
-			}
-
-			// Pan display to trigger hardware page flip on Allwinner DE2.0
-			syscall.Syscall(syscall.SYS_IOCTL, fb.Fd(), FBIOPAN_DISPLAY, uintptr(unsafe.Pointer(&v)))
-
-			frameCount++
-			if frameCount%100 == 0 {
-				fmt.Printf("\r[*] Blitted %d frames...", frameCount)
-			}
+			ds.handleDualZoneStream(conn)
 		}
+	}()
 
-		conn.Close()
-		log.Printf("\n[-] Host disconnected after %d frames. Ready for next stream.", frameCount)
+	// Full-screen accept loop
+	for {
+		conn, err := lFull.Accept()
+		if err != nil {
+			return
+		}
+		ds.handleFullScreenStream(conn)
 	}
 }

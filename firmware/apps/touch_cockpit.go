@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -99,9 +98,15 @@ func NewCockpitUI() (*CockpitUI, error) {
 		return nil, fmt.Errorf("open /dev/fb0 failed: %v", err)
 	}
 
+	fbBytes, err := syscall.Mmap(int(fb.Fd()), 0, ScreenWidth*ScreenHeight*2, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
+	if err != nil {
+		fb.Close()
+		return nil, fmt.Errorf("mmap /dev/fb0 failed: %v", err)
+	}
+
 	ui := &CockpitUI{
 		fbFile: fb,
-		fbMem:  make([]uint16, ScreenWidth*ScreenHeight),
+		fbMem:  unsafe.Slice((*uint16)(unsafe.Pointer(&fbBytes[0])), ScreenWidth*ScreenHeight),
 	}
 
 	// Query screeninfo
@@ -109,15 +114,6 @@ func NewCockpitUI() (*CockpitUI, error) {
 	ui.vinfo.Activate = FB_ACTIVATE_NOW | FB_ACTIVATE_FORCE
 	ui.vinfo.Xoffset = 0
 	ui.vinfo.Yoffset = 0
-
-	// Read existing frame content so we don't clobber background
-	rawBytes := make([]byte, ScreenWidth*ScreenHeight*2)
-	fb.Seek(0, io.SeekStart)
-	if n, err := io.ReadFull(fb, rawBytes); err == nil && n == len(rawBytes) {
-		for i := 0; i < len(ui.fbMem); i++ {
-			ui.fbMem[i] = binary.LittleEndian.Uint16(rawBytes[i*2 : (i+1)*2])
-		}
-	}
 
 	return ui, nil
 }
@@ -219,7 +215,6 @@ func (ui *CockpitUI) RenderActionBar(activeButton int) {
 func (ui *CockpitUI) FlashFeedback(action string) {
 	ui.mu.Lock()
 	if action == "ready" {
-		ui.DrawFrame(0, 0, ScreenWidth, ScreenHeight, 24, ColorGreen)
 		ui.renderButtons(1)
 		ui.Flip()
 		ui.mu.Unlock()
@@ -227,12 +222,10 @@ func (ui *CockpitUI) FlashFeedback(action string) {
 		time.Sleep(300 * time.Millisecond)
 
 		ui.mu.Lock()
-		ui.DrawFrame(0, 0, ScreenWidth, ScreenHeight, 24, ColorBlack)
 		ui.renderButtons(0)
 		ui.Flip()
 		ui.mu.Unlock()
 	} else if action == "ctrl+c" {
-		ui.DrawFrame(0, 0, ScreenWidth, ScreenHeight, 24, ColorRed)
 		ui.renderButtons(2)
 		ui.Flip()
 		ui.mu.Unlock()
@@ -240,7 +233,6 @@ func (ui *CockpitUI) FlashFeedback(action string) {
 		time.Sleep(300 * time.Millisecond)
 
 		ui.mu.Lock()
-		ui.DrawFrame(0, 0, ScreenWidth, ScreenHeight, 24, ColorBlack)
 		ui.renderButtons(0)
 		ui.Flip()
 		ui.mu.Unlock()
@@ -250,10 +242,6 @@ func (ui *CockpitUI) FlashFeedback(action string) {
 }
 
 func (ui *CockpitUI) Flip() {
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, ui.fbMem)
-	ui.fbFile.Seek(0, io.SeekStart)
-	ui.fbFile.Write(buf.Bytes())
 	syscall.Syscall(syscall.SYS_IOCTL, ui.fbFile.Fd(), FBIOPAN_DISPLAY, uintptr(unsafe.Pointer(&ui.vinfo)))
 }
 

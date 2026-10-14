@@ -70,9 +70,15 @@ else
     ln -sf /sys/kernel/config/usb_gadget/g1/functions/ffs.adb /sys/kernel/config/usb_gadget/g1/configs/c.1/ffs.adb
 fi
 
-# Kill any stale adbd and restart
-killall -9 adbd 2>/dev/null
-/bin/adbd -D &
+# Start adbd cleanly with background auto-respawn supervisor
+(
+    while true; do
+        if ! pidof adbd >/dev/null 2>&1; then
+            /bin/adbd >/dev/null 2>&1 &
+        fi
+        sleep 2
+    done
+) >/dev/null 2>&1 &
 
 # Detect available UDC name
 UDC_CONTROLLER=$(ls /sys/class/udc 2>/dev/null | head -n 1)

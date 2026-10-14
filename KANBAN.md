@@ -71,7 +71,14 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 - [x] Optimized gesture detection responsiveness: Unified ✌️ and 👌 into single confirm counter with soft decay, lowered latency to ~160ms (2 frames @ 12.5 fps)
 - [x] Implemented Closed Fist ✊ (握拳) for STOP / ABORT: Utilized zero-finger compactness & aspect ratio ($0.65 \le W/H \le 1.35$) for maximum topological separation against ✌️/👌, triggering 24px Crimson Red border glow, `[STOP / ABORT]` highlight, and `ctrl+c`
 - [x] Decoupled & shelved visual gesture engine: Converted `gesture_detector` to feature-flagged module (`/mnt/sdcard/enable_gesture`), terminated background process to free resources, preserved complete driver specs in `docs/GESTURE_ENGINE_ARCHIVE.md`
-- [ ] Initiate host screen streaming verification (`host_tools/stream_to_monitor.py` targeting 1600x600 framebuffer)
+### Phase 5: Dual-Zone Cockpit Viewport & Zero-Typing PTY Master (Current Phase)
+- [x] Dual-Zone Screen Architecture designed: Left 1200x600 for low-latency host viewport + Right 400x600 for persistent Goodix GT911 touch Action Bar
+- [x] Upgraded `fb_receiver`: Dual-port listening (5900 dual-zone 1200x600, 5901 full-screen 1600x600) with zero-copy hardware framebuffer `mmap` row-by-row blitting (leaving columns 1200..1600 untouched)
+- [x] Upgraded `touch_cockpit`: Switched to zero-copy hardware framebuffer `mmap`, isolating Action Bar rendering to columns 1200..1600 and eliminating all full-screen clobbering
+- [x] Upgraded `stream_to_monitor.py`: Added `--mode dual` (default 1200x600 on port 5900) and `--mode full` (1600x600 on port 5901), with low-latency ffmpeg flags and `--test` dynamic test pattern
+- [x] Upgraded `cockpit_agent.py`: Implemented robust PTY Master mode wrapping `$SHELL` or CLI tools (`agy`), natively bypassing Linux 6.x TIOCSTI restriction and injecting `ready\n` and `Ctrl+C` into terminal child sessions
+- [x] Verified Dual-Zone live streaming over high-speed ADB port 5900
+- [ ] End-to-end integration test of live streaming alongside physical button touch injection
 
 ---
 
@@ -79,24 +86,25 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 
 - **Device Physical Status**: Allwinner V553 (`sun8iw21`) dashcam connected via single USB Type-C cable to host workstation (`usb:5-2.1` @ 480Mbps USB 2.0 High-Speed), providing both power and high-speed bidirectional data.
 - **Boot Source**: Fully booted from custom MicroSD card ext4 partition; factory `cdr` recording app is 100% blocked and isolated.
-- **Screen Display & Touch**: 1600x600 custom AI UI locked on screen; right-side Action Bar button touch flashing and event reporting physically verified 100%!
-- **Standby Camera**: Techpoint TP9950/TP9951 1080p sensor on `/dev/video8` decoupled and preserved in standby.
-- **ADB Connectivity**: Active (`20080411 device usb:5-2.1`), non-interactive `adb shell` fully operational.
-- **Active Daemons on Target**:
-  - PID 1: `/sbin/init`
-  - PID 845: `/bin/sh /mnt/sdcard/init_usb_monitor.sh` (supervisor protection loop)
-  - PID 904: `/bin/adbd -D` (480Mbps High-Speed ADB channel)
-  - PID 2594: `/mnt/sdcard/touch_cockpit` (Goodix GT911 Action Bar controller & UDP :8889 listener)
-  - PID 943: `/mnt/sdcard/fb_receiver` (Listening on port `:5900`)
+- **Screen Display & Touch**: 1600x600 BOE display partitioned into Dual Zones:
+  - Columns 0..1200: 1200x600 low-latency streaming viewport (managed by `fb_receiver`)
+  - Columns 1200..1600: 400x600 capacitive touch Action Bar (managed by `touch_cockpit`)
+- **Standby Camera**: Techpoint TP9950/TP9951 1080p sensor on `/dev/video8` decoupled and preserved in standby behind `/mnt/sdcard/enable_gesture`.
+- **ADB Connectivity**: USB 2.0 High-Speed ADB channel (`18d1:d002` @ 480Mbps).
+- **Target Daemons**:
+  - `fb_receiver`: Mmap dual-zone display receiver on ports 5900 (1200x600) & 5901 (1600x600)
+  - `touch_cockpit`: Goodix GT911 Action Bar controller on `/dev/input/event0`
+  - `init_usb_monitor.sh`: Auto-respawn supervisor for `adbd`
 - **Host Tools Ready**:
-  - `host_tools/cockpit_agent.py` (Zero-typing terminal companion agent via ADB)
-  - `host_tools/stream_to_monitor.py` (1600x600 ultra-wide screen streaming client)
+  - `host_tools/cockpit_agent.py`: PTY Master interactive companion agent
+  - `host_tools/stream_to_monitor.py`: Dual-zone (1200x600) & full-screen (1600x600) streaming client
 
 ---
 
 ## 5. Immediate Next Steps
 
-1. User presents ✌️ (V-sign) or 👌 (OK gesture) to the user-facing secondary camera lens to verify green border flash and live event injection;
-2. Run `./host_tools/cockpit_agent.py` on host to achieve zero-typing terminal control;
-3. Stream desktop or test bench diagnostics to the 10.26-inch ultra-wide display.
+1. Power-cycle or reset device to reload clean `adbd` supervisor;
+2. Verify live dual-zone stream (`python3 host_tools/stream_to_monitor.py --test`) while tapping physical buttons;
+3. Launch `python3 host_tools/cockpit_agent.py` to test zero-typing PTY interaction.
+
 

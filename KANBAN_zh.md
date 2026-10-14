@@ -71,7 +71,14 @@
 - [x] 优化手势判定响应灵敏度：将 ✌️ 与 👌 统一归并为正向确认意图，引入平滑衰减，将触发时延压缩至 ~160ms（12.5 fps 下仅需 2 帧稳定确认）
 - [x] 实现 ✊ 握拳（Closed Fist）停止/终止手势：基于 0 突出手指且几何长宽比（$0.65 \le W/H \le 1.35$）紧凑团块特征，与 ✌️/👌 形成特征空间最大对比度，稳定触发全屏 24px 深红光环、`[STOP / ABORT]` 按钮高亮及 `ctrl+c` 指令
 - [x] 解耦并封存视觉手势引擎：将 `gesture_detector` 改为特征开关门禁模式（`/mnt/sdcard/enable_gesture`），终止设备端后台进程以释放摄像头硬件与系统资源，全量驱动契约已双语归档至 `docs/GESTURE_ENGINE_ARCHIVE_zh.md`
-- [ ] 启动宿主机投屏测试（运行 `host_tools/stream_to_monitor.py` 验证 1600x600 显存投屏）
+### Phase 5: 屏幕双分区投屏与 PTY Master 零输入终端架构 (当前阶段)
+- [x] 设计屏幕双分区架构：左侧 1200x600 作为宿主机低延迟代码/日志视口 + 右侧 400x600 保持汇顶 GT911 电容触控 Action Bar 物理常驻
+- [x] 升级 `fb_receiver`：支持双端口并行监听（5900 端口 1200x600 双分区，5901 端口 1600x600 全屏），引入底层硬件显存零拷贝 `mmap` 逐行渲染，完全不触碰右侧 1200..1600 动作条
+- [x] 升级 `touch_cockpit`：全面切换至底层硬件显存零拷贝 `mmap`，严格将绘制与刷新范围约束在右侧 1200..1600 区域，彻底消除整屏覆写与闪烁
+- [x] 升级 `stream_to_monitor.py`：新增 `--mode dual`（默认 1200x600 -> 端口 5900）与 `--mode full`（1600x600 -> 端口 5901），配置 ffmpeg 超低延迟流水线与 `--test` 动态性能基准图案
+- [x] 升级 `cockpit_agent.py`：基于 POSIX PTY Master 架构重构，原生接管 `$SHELL` 或任意 CLI（如 `agy`），100% 绕过 Linux 6.x 内核 TIOCSTI 安全限制，按压屏幕物理按键直接向终端子进程标准输入写入 `ready\n` 与 `Ctrl+C`
+- [x] 实测双分区通过高频 ADB 端口 5900 实时投屏成功，显存逐行混合渲染正常
+- [ ] 实机完成屏幕投屏与物理电容触控按键联调闭环
 
 ---
 
@@ -79,25 +86,26 @@
 
 - **物理连接状态**：全志 V553（`sun8iw21`）行车记录仪通过单根 USB Type-C 连入宿主机（`usb:5-2.1` @ 480Mbps USB 2.0 High-Speed），供电与数据双向畅通。
 - **启动引导源**：从 MicroSD 卡特制 ext4 分区完全引导，原厂 `cdr` 录像进程被 100% 隔离阻断。
-- **屏幕显示与触控状态**：1600x600 专属 AI 界面在物理屏幕上保持锁定显示；右侧 Action Bar 触控按压高亮闪烁与事件上报已实机验证 100% 成功！
-- **备用摄像头**：Techpoint TP9950/TP9951 1080p 传感器挂载于 `/dev/video8`，已解耦并在底层处于低功耗待机状态。
-- **ADB 连通性**：在线运行（`20080411 device usb:5-2.1`），非交互式 `adb shell` 畅通无阻。
+- **屏幕显示与触控状态**：1600x600 京东方超宽屏实现双分区物理隔离：
+  - 列 0..1200：1200x600 低延迟宿主机投屏视口（由 `fb_receiver` 驱动）
+  - 列 1200..1600：400x600 电容触控 Action Bar 动作条（由 `touch_cockpit` 驱动）
+- **备用摄像头**：Techpoint TP9950/TP9951 1080p 传感器挂载于 `/dev/video8`，已解耦并在门禁文件 `/mnt/sdcard/enable_gesture` 保护下处于待机状态。
+- **ADB 连通性**：USB 2.0 High-Speed ADB 通道（`18d1:d002` @ 480Mbps）。
 - **设备端运行守护进程**：
-  - PID 1: `/sbin/init`
-  - PID 845: `/bin/sh /mnt/sdcard/init_usb_monitor.sh`（监控死循环保护中）
-  - PID 904: `/bin/adbd -D`（480Mbps 高速 ADB 通道）
-  - PID 2594: `/mnt/sdcard/touch_cockpit`（汇顶 GT911 动作条交互服务 & UDP :8889 监听）
-  - PID 943: `/mnt/sdcard/fb_receiver`（监听 `:5900` 端口）
+  - `fb_receiver`: Mmap 硬件双分区帧缓冲接收服务（监听端口 5900 与 5901）
+  - `touch_cockpit`: 汇顶 GT911 动作条服务（`/dev/input/event0`）
+  - `init_usb_monitor.sh`: `adbd` 自动拉起守护监控
 - **宿主机端工具链**：
-  - `host_tools/cockpit_agent.py`（ADB 触控事件捕获与终端零打字敲击伴侣）
-  - `host_tools/stream_to_monitor.py`（1600x600 显存流式投屏客户端）
+  - `host_tools/cockpit_agent.py`: PTY Master 交互式终端伴侣
+  - `host_tools/stream_to_monitor.py`: 双分区（1200x600）与全屏（1600x600）投屏客户端
 
 ---
 
 ## 5. 当前第一步即时行动
 
-1. 在朝向用户的副摄像头前比划 ✌️（V-sign）或 👌（OK）手势，验证绿色反馈边框闪烁与事件自动注入；
-2. 运行 `./host_tools/cockpit_agent.py` 实现全流程免键盘键入交互；
-3. 测试主机端到 10.26 英寸超宽屏的 1600x600 实时投屏显示。
+1. 重新插拔 USB Type-C 或按复位键重启设备，加载最新守护；
+2. 运行 `python3 host_tools/stream_to_monitor.py --test` 开启 1200x600 动态测试投屏；
+3. 运行 `python3 host_tools/cockpit_agent.py` 验证物理按压免打字终端交互。
+
 
 
