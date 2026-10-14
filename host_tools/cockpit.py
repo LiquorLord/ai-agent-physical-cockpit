@@ -96,8 +96,39 @@ def main():
     parser.add_argument("--fps", type=int, default=25, help="Streaming framerate (default: 25)")
     parser.add_argument("--mode", choices=["dual", "full"], default="dual", help="Display mode (default: dual)")
     parser.add_argument("--no-stream", action="store_true", help="Do not start display stream (PTY only)")
+    parser.add_argument("--popup", action="store_true", help="Spawn interactive cockpit terminal in desktop GUI window")
     parser.add_argument("cmd", nargs="*", default=None, help="Target command to run in PTY (default: $SHELL)")
     args = parser.parse_args()
+
+    if args.popup:
+        display = os.environ.get("DISPLAY", ":0")
+        env = os.environ.copy()
+        env["DISPLAY"] = display
+        # Build command without --popup
+        cmd = [sys.executable, os.path.realpath(__file__)]
+        if args.display:
+            cmd.extend(["--display", args.display])
+        if args.window:
+            cmd.extend(["--window", args.window])
+        if args.no_stream:
+            cmd.append("--no-stream")
+        if args.cmd:
+            cmd.append("--")
+            cmd.extend(args.cmd)
+        
+        cwd = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+        term = "gnome-terminal"
+        term_cmd = [
+            term,
+            f"--working-directory={cwd}",
+            "--title=AGY Physical Cockpit",
+            "--geometry=100x30",
+            "--",
+            *cmd
+        ]
+        log(f"Launching desktop popup cockpit terminal on {display} via {term}...")
+        subprocess.Popen(term_cmd, env=env, cwd=cwd)
+        return
 
     print("=" * 65)
     print("  \033[1;32mAGY PHYSICAL COCKPIT\033[0m — Zero-Typing Developer Console")

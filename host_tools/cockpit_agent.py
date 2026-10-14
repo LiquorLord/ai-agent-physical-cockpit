@@ -106,8 +106,13 @@ def run_pty_session(cmd):
     log("[*] Touch [PROCEED / READY] on screen to auto-input 'ready'")
     log("[*] Touch [STOP / ABORT] on screen to send Ctrl+C")
 
-    # Save original terminal settings
-    old_termios = termios.tcgetattr(sys.stdin.fileno())
+    is_tty = sys.stdin.isatty()
+    old_termios = None
+    if is_tty:
+        try:
+            old_termios = termios.tcgetattr(sys.stdin.fileno())
+        except Exception:
+            is_tty = False
 
     master_fd, slave_fd = pty.openpty()
 
@@ -132,28 +137,42 @@ def run_pty_session(cmd):
 
     # Parent process
     os.close(slave_fd)
-    sync_terminal_window_size(master_fd)
 
-    def handle_sigwinch(signum, frame):
+    if is_tty:
         sync_terminal_window_size(master_fd)
-
-    signal.signal(signal.SIGWINCH, handle_sigwinch)
+        def handle_sigwinch(signum, frame):
+            sync_terminal_window_size(master_fd)
+        signal.signal(signal.SIGWINCH, handle_sigwinch)
+    else:
+        try:
+            ws = struct.pack("HHHH", 24, 80, 0, 0)
+            fcntl.ioctl(master_fd, termios.TIOCSWINSZ, ws)
+        except Exception:
+            pass
 
     stop_event = threading.Event()
     listener = threading.Thread(target=event_listener_thread, args=(master_fd, stop_event), daemon=True)
     listener.start()
 
-    # Put host terminal into raw mode
-    tty.setraw(sys.stdin.fileno())
+    if is_tty:
+        tty.setraw(sys.stdin.fileno())
 
     try:
         while True:
-            r, _, _ = select.select([sys.stdin.fileno(), master_fd], [], [])
-            if sys.stdin.fileno() in r:
-                data = os.read(sys.stdin.fileno(), 1024)
-                if not data:
+            r_fds = [master_fd]
+            if is_tty:
+                r_fds.append(sys.stdin.fileno())
+
+            r, _, _ = select.select(r_fds, [], [])
+
+            if is_tty and sys.stdin.fileno() in r:
+                try:
+                    data = os.read(sys.stdin.fileno(), 1024)
+                    if not data:
+                        break
+                    os.write(master_fd, data)
+                except OSError:
                     break
-                os.write(master_fd, data)
 
             if master_fd in r:
                 try:
@@ -161,13 +180,20 @@ def run_pty_session(cmd):
                     if not data:
                         break
                     os.write(sys.stdout.fileno(), data)
+                    sys.stdout.flush()
                 except OSError:
                     break
     finally:
-        # Restore host terminal settings
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, old_termios)
+        if is_tty and old_termios is not None:
+            try:
+                termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, old_termios)
+            except Exception:
+                pass
         stop_event.set()
-        os.close(master_fd)
+        try:
+            os.close(master_fd)
+        except Exception:
+            pass
         _, status = os.waitpid(pid, 0)
         log(f"[*] Child session finished (exit code {os.waitstatus_to_exitcode(status)})")
 

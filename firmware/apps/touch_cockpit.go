@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
@@ -451,6 +452,7 @@ func sendKeystroke(action string) {
 }
 
 func main() {
+	signal.Ignore(syscall.SIGHUP)
 	log.Println("[touch_cockpit] Initializing AGY Touch Controller on /dev/input/event0...")
 
 	ui, err := NewCockpitUI()
@@ -521,9 +523,11 @@ func main() {
 			case ABS_MT_POSITION_X, ABS_X:
 				rawX = ev.Value
 				hasCoord = true
+				pressure = 1
 			case ABS_MT_POSITION_Y, ABS_Y:
 				rawY = ev.Value
 				hasCoord = true
+				pressure = 1
 			case ABS_MT_PRESSURE:
 				pressure = ev.Value
 				if pressure > 0 {
@@ -550,17 +554,19 @@ func main() {
 					screenX := int(rawX)
 					screenY := int(rawY)
 
-					if time.Since(lastAction) >= 500*time.Millisecond {
-						// Button 1: [READY / PROCEED] (Y: 55..280)
-						if screenX >= 1200 && screenY >= 50 && screenY <= 280 {
+					log.Printf("[TOUCH] Detected at Screen(%d, %d)", screenX, screenY)
+
+					if time.Since(lastAction) >= 400*time.Millisecond {
+						// Button 1: [READY / PROCEED] (Y: 40..285)
+						if screenX >= 1200 && screenY >= 40 && screenY <= 285 {
 							lastAction = time.Now()
 							log.Printf("[HIT] Button 1 [READY / PROCEED] Hit at (%d, %d)", screenX, screenY)
 							if ui != nil {
 								ui.FlashFeedback("ready")
 							}
 							go sendKeystroke("ready")
-						} else if screenX >= 1200 && screenY >= 330 && screenY <= 560 {
-							// Button 2: [STOP / ABORT] (Y: 335..560)
+						} else if screenX >= 1200 && screenY >= 325 && screenY <= 565 {
+							// Button 2: [STOP / ABORT] (Y: 325..565)
 							lastAction = time.Now()
 							log.Printf("[HIT] Button 2 [STOP / ABORT] Hit at (%d, %d)", screenX, screenY)
 							if ui != nil {

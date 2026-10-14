@@ -149,12 +149,19 @@ echo "[OK] System boot sequence completed. Entering supervisor loop."
 # 阻断原厂 rcS 脚本继续执行，彻底隔离原厂 cdr 行车记录仪应用
 LOOP_COUNT=0
 while true; do
-    if [ -x /mnt/sdcard/fb_receiver ]; then
-        /mnt/sdcard/fb_receiver
+    if ! pidof touch_cockpit >/dev/null 2>&1; then
+        if [ -x /mnt/sdcard/touch_cockpit ]; then
+            /mnt/sdcard/touch_cockpit >/tmp/touch.log 2>&1 &
+        fi
+    fi
+    if ! pidof fb_receiver >/dev/null 2>&1; then
+        if [ -x /mnt/sdcard/fb_receiver ]; then
+            /mnt/sdcard/fb_receiver >/tmp/fb_receiver.log 2>&1 &
+        fi
     fi
     LOOP_COUNT=$((LOOP_COUNT + 1))
     if [ $((LOOP_COUNT % 10)) -eq 0 ]; then
         sync
     fi
-    sleep 1
+    sleep 2
 done
