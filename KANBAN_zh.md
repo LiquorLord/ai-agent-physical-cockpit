@@ -63,28 +63,34 @@
 - [x] 查明 USB 未识别根因：原厂 4.9.191 内核未内建 `usb_f_hid` / `usb_f_ncm`，导致 ConfigFS 复合设备装载失败从而阻断了 UDC 绑定；同时早期脚本缺少 `/sbin/udevd`
 - [x] 深度重构 `init_usb_monitor.sh`：部署全量落盘日志（`boot_debug.log`, `dmesg_boot.log`），显式启动 `S10udev` 与 `S11dev`，回退至原厂验证的 `setusbconfig adb` 高速数据桥接方案
 - [x] 编写宿主机端零敲击伴侣守护脚本（`host_tools/cockpit_agent.py`），通过 ADB 桥接电容触控事件
-- [ ] 软硬件端到端闭环验证：用户将 SD 卡插回设备并连上 USB 开机，验证 ADB 自动重连与屏幕触控响应
+- [x] 软硬件端到端闭环验证：电容触控屏幕动作条与物理按压 100% 验证成功！绿色 `[PROCEED / READY]` 与红色 `[STOP / ABORT]` 按键高亮闪烁并成功输出指令事件到 `/tmp/cockpit_event.log`
+- [ ] 联调 `gesture_detector`（通过摄像头比划 ✌️ / 👌 手势自动确认，免触控纯视觉零摩擦）
+- [ ] 启动宿主机投屏测试（运行 `host_tools/stream_to_monitor.py` 验证 1600x600 显存投屏）
 
 ---
 
 ## 4. 当前物理机运行与环境快照
 
-- **物理连接状态**：MicroSD 卡已完成最新固件与日志脚本写入，已安全卸载（`sync && udisksctl unmount -b /dev/sdc1`），正等待用户插回 V553 行车记录仪开机。
-- **启动引导源**：即将从特制 MicroSD 卡重新引导。
-- **ADB 连通性**：后台监听守护已挂起就绪，开机后自动抓取设备。
-- **SD 卡已同步文件**：
-  - `/mnt/sdcard/init_usb_monitor.sh`（全量持久化日志 `boot_debug.log` + udev 守护启动 + 原厂 UDC 绑定）
-  - `/mnt/sdcard/touch_cockpit`（GT911 触控动作条）
-  - `/mnt/sdcard/gesture_detector`（视觉手势分类器）
-  - `/mnt/sdcard/fb_receiver`（集成 `FBIOPAN_DISPLAY` 硬件翻页）
-  - `/mnt/sdcard/show_splash`
-  - `/mnt/sdcard/splash.raw`
+- **物理连接状态**：全志 V553（`sun8iw21`）行车记录仪通过单根 USB Type-C 连入宿主机（`usb:5-2.1` @ 480Mbps USB 2.0 High-Speed），供电与数据双向畅通。
+- **启动引导源**：从 MicroSD 卡特制 ext4 分区完全引导，原厂 `cdr` 录像进程被 100% 隔离阻断。
+- **屏幕显示与触控状态**：1600x600 专属 AI 界面在物理屏幕上保持锁定显示；右侧 Action Bar 触控按压高亮闪烁与事件上报已实机验证 100% 成功！
+- **ADB 连通性**：在线运行（`20080411 device usb:5-2.1`），非交互式 `adb shell` 畅通无阻。
+- **设备端运行守护进程**：
+  - PID 1: `/sbin/init`
+  - PID 845: `/bin/sh /mnt/sdcard/init_usb_monitor.sh`（监控死循环保护中）
+  - PID 904: `/bin/adbd -D`（480Mbps 高速 ADB 通道）
+  - PID 933: `/mnt/sdcard/touch_cockpit`（汇顶 GT911 动作条交互服务）
+  - PID 943: `/mnt/sdcard/fb_receiver`（监听 `:5900` 端口）
+- **宿主机端工具链**：
+  - `host_tools/cockpit_agent.py`（ADB 触控事件捕获与终端零打字敲击伴侣）
+  - `host_tools/stream_to_monitor.py`（1600x600 显存流式投屏客户端）
 
 ---
 
 ## 5. 当前第一步即时行动
 
-1. 用户将 MicroSD 卡拔出电脑读卡器，插回全志 V553 行车记录仪；
-2. 重新连接 USB Type-C 线缆接回电脑开机；
-3. 后台监听将自动捕获设备，输出启动日志并打通触控伴侣交互！
+1. 启动宿主机伴侣守护：`./host_tools/cockpit_agent.py`，实现屏幕点按即自动敲入 `ready\n` 零输入体验；
+2. 联调摄像头视觉手势分类器 `gesture_detector`，验证比划 ✌️ 或 👌 手势自动触发；
+3. 测试主机端到 10.26 英寸超宽屏的 1600x600 实时投屏显示。
+
 

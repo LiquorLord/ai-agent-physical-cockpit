@@ -35,21 +35,22 @@ def monitor_touch_events():
     subprocess.run(["adb", "wait-for-device"])
     log("Device connected via High-Speed ADB! Starting live event listener...")
 
-    cmd = ["adb", "shell", "tail -n 0 -F /tmp/touch.log 2>/dev/null"]
+    cmd = ["adb", "shell", "tail -n 0 -F /tmp/cockpit_event.log 2>/dev/null"]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
 
     for line in proc.stdout:
         line = line.strip()
         if not line:
             continue
-        if "Triggering Action: ready" in line:
+        if line == "ready" or "ready" in line:
             log("🎯 Physical Touch: [READY / PROCEED] pressed!")
             inject_terminal_input("ready\n")
-        elif "Triggering Action: ctrl+c" in line:
+        elif line == "ctrl+c" or "ctrl+c" in line:
             log("🛑 Physical Touch: [STOP / ABORT] pressed!")
             inject_terminal_input("\x03")
-        elif "Touch detected:" in line:
-            log(f"👆 {line}")
+        else:
+            log(f"⚡ Event: {line}")
+
 
 def main():
     print("=" * 60)

@@ -63,40 +63,33 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 - [x] Uncovered USB detection root cause: Factory Linux 4.9.191 lacks `usb_f_hid` / `usb_f_ncm`, causing ConfigFS composite gadget failure which prevented UDC binding and D+ pullup activation; `/sbin/udevd` was also absent from early init
 - [x] Overhauled `init_usb_monitor.sh`: Deployed persistent file logging (`boot_debug.log`, `dmesg_boot.log`), explicitly launched `S10udev` and `S11dev`, reverted to factory-proven `setusbconfig adb` data bridge
 - [x] Created Host Companion Agent (`host_tools/cockpit_agent.py`) to bridge screen touch events to the host terminal over ADB
-- [ ] End-to-end multimodal physical verification: User inserts MicroSD card and plugs in USB to verify ADB reconnect and live touch action response
+- [x] End-to-end multimodal physical verification: Capacitive touch Action Bar verified 100%! Emerald Green `[PROCEED / READY]` and Crimson Red `[STOP / ABORT]` flash upon touch and log events to `/tmp/cockpit_event.log`
+- [ ] Connect `gesture_detector` (V4L2 camera frame grabber for ✌️ V / 👌 OK visual gesture recognition)
+- [ ] Initiate host screen streaming verification (`host_tools/stream_to_monitor.py` targeting 1600x600 framebuffer)
 
 ---
 
 ## 4. Current Hardware & Runtime State Snapshot
 
-- **Device Physical Status**: MicroSD card updated with new boot engine & diagnostic logs, safely unmounted (`sync && udisksctl unmount -b /dev/sdc1`), waiting for user to insert into V553 dashcam.
-- **Boot Source**: About to boot from custom MicroSD card.
-- **ADB Connectivity**: Host background listener active, waiting for device attachment.
-- **Synchronized SD Card Files**:
-  - `/mnt/sdcard/init_usb_monitor.sh` (Persistent `boot_debug.log` + udev daemons + factory UDC bind)
-  - `/mnt/sdcard/touch_cockpit` (GT911 Action Bar controller)
-  - `/mnt/sdcard/gesture_detector` (Visual gesture classifier)
-  - `/mnt/sdcard/fb_receiver` (DE2.0 `FBIOPAN_DISPLAY` frame receiver)
-  - `/mnt/sdcard/show_splash`
-  - `/mnt/sdcard/splash.raw`
+- **Device Physical Status**: Allwinner V553 (`sun8iw21`) dashcam connected via single USB Type-C cable to host workstation (`usb:5-2.1` @ 480Mbps USB 2.0 High-Speed), providing both power and high-speed bidirectional data.
+- **Boot Source**: Fully booted from custom MicroSD card ext4 partition; factory `cdr` recording app is 100% blocked and isolated.
+- **Screen Display & Touch**: 1600x600 custom AI UI locked on screen; right-side Action Bar button touch flashing and event reporting physically verified 100%!
+- **ADB Connectivity**: Active (`20080411 device usb:5-2.1`), non-interactive `adb shell` fully operational.
+- **Active Daemons on Target**:
+  - PID 1: `/sbin/init`
+  - PID 845: `/bin/sh /mnt/sdcard/init_usb_monitor.sh` (supervisor protection loop)
+  - PID 904: `/bin/adbd -D` (480Mbps High-Speed ADB channel)
+  - PID 933: `/mnt/sdcard/touch_cockpit` (Goodix GT911 Action Bar controller)
+  - PID 943: `/mnt/sdcard/fb_receiver` (Listening on port `:5900`)
+- **Host Tools Ready**:
+  - `host_tools/cockpit_agent.py` (Zero-typing terminal companion agent via ADB)
+  - `host_tools/stream_to_monitor.py` (1600x600 ultra-wide screen streaming client)
 
 ---
 
 ## 5. Immediate Next Steps
 
-1. User removes MicroSD card from PC reader and inserts it into Allwinner V553 dashcam;
-2. Reconnect USB Type-C cable to host PC to power on;
-3. Host background listener will automatically detect device, stream boot logs, and verify touch interactions!
+1. Launch host companion agent: `./host_tools/cockpit_agent.py` to bridge physical screen presses directly to terminal `"ready\n"` injection;
+2. Verify visual gesture classifier `gesture_detector` for contactless ✌️ / 👌 approval;
+3. Stream desktop or test bench diagnostics to the 10.26-inch ultra-wide display.
 
-   - Push to `/mnt/sdcard/touch_cockpit` and test physical touch tap.
-
-2. **Step 2: Build & Deploy `gesture_detector`**:
-   - Write `firmware/apps/gesture_detector.go`:
-     - Opens `/dev/video0` via standard V4L2 ioctl.
-     - Downsamples frames to 160x120 grayscale.
-     - Detects ✌️ V-sign and 👌 OK gestures with temporal debounce filter.
-     - On gesture confirmation: renders green screen feedback and executes `/mnt/sdcard/send_hid_key "ready\n"`.
-   - Cross-compile for ARMv7 and push to `/mnt/sdcard/gesture_detector`.
-
-3. **Step 3: End-to-End Multimodal Physical Verification**:
-   - Verify that gesturing ✌️ or 👌 in front of the cockpit screen automatically inputs `"ready"` into the developer's terminal prompt.
