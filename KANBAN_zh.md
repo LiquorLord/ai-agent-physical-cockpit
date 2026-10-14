@@ -64,8 +64,10 @@
 - [x] 深度重构 `init_usb_monitor.sh`：部署全量落盘日志（`boot_debug.log`, `dmesg_boot.log`），显式启动 `S10udev` 与 `S11dev`，回退至原厂验证的 `setusbconfig adb` 高速数据桥接方案
 - [x] 编写宿主机端零敲击伴侣守护脚本（`host_tools/cockpit_agent.py`），通过 ADB 桥接电容触控事件
 - [x] 软硬件端到端闭环验证：电容触控屏幕动作条与物理按压 100% 验证成功！绿色 `[PROCEED / READY]` 与红色 `[STOP / ABORT]` 按键高亮闪烁并成功输出指令事件到 `/tmp/cockpit_event.log`
-- [ ] 联调 `gesture_detector`（通过摄像头比划 ✌️ / 👌 手势自动确认，免触控纯视觉零摩擦）
+- [x] 联调 `gesture_detector`：全志 `sunxi-vin` 多平面（MPLANE 9）1280x720 NV12 @ 30fps 视频流完全打通，Cortex-A7 8 倍极速空间降采样与手势分类器在线运行！
+- [ ] 验证视觉手势识别：在摄像头前比划 ✌️（V-sign）或 👌（OK）手势，验证屏幕绿色边框闪烁反馈与指令上报
 - [ ] 启动宿主机投屏测试（运行 `host_tools/stream_to_monitor.py` 验证 1600x600 显存投屏）
+
 
 ---
 

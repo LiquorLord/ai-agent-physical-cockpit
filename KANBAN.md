@@ -64,8 +64,10 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 - [x] Overhauled `init_usb_monitor.sh`: Deployed persistent file logging (`boot_debug.log`, `dmesg_boot.log`), explicitly launched `S10udev` and `S11dev`, reverted to factory-proven `setusbconfig adb` data bridge
 - [x] Created Host Companion Agent (`host_tools/cockpit_agent.py`) to bridge screen touch events to the host terminal over ADB
 - [x] End-to-end multimodal physical verification: Capacitive touch Action Bar verified 100%! Emerald Green `[PROCEED / READY]` and Crimson Red `[STOP / ABORT]` flash upon touch and log events to `/tmp/cockpit_event.log`
-- [ ] Connect `gesture_detector` (V4L2 camera frame grabber for ✌️ V / 👌 OK visual gesture recognition)
+- [x] Brought up `gesture_detector`: Allwinner `sunxi-vin` multi-planar (MPLANE 9) 1280x720 NV12 @ 30fps stream fully established, Cortex-A7 8x spatial downsampler & classifier running live!
+- [ ] Verify visual gesture recognition: User presents ✌️ (V-sign) or 👌 (OK gesture) to camera lens to verify green feedback border and event logging
 - [ ] Initiate host screen streaming verification (`host_tools/stream_to_monitor.py` targeting 1600x600 framebuffer)
+
 
 ---
 
