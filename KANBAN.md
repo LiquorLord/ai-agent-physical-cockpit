@@ -70,7 +70,7 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 - [x] Implemented synchronized full-screen visual feedback: Inter-process UDP bridge between `gesture_detector` and `touch_cockpit` (`127.0.0.1:8889`) flashes a 24px wide glowing Emerald Green border around all four screen edges and highlights the `[PROCEED / READY]` button for 300ms on gesture recognition
 - [x] Optimized gesture detection responsiveness: Unified ✌️ and 👌 into single confirm counter with soft decay, lowered latency to ~160ms (2 frames @ 12.5 fps)
 - [x] Implemented Closed Fist ✊ (握拳) for STOP / ABORT: Utilized zero-finger compactness & aspect ratio ($0.65 \le W/H \le 1.35$) for maximum topological separation against ✌️/👌, triggering 24px Crimson Red border glow, `[STOP / ABORT]` highlight, and `ctrl+c`
-- [ ] User presents ✊ (Closed Fist) to camera to verify Crimson Red border glow & `ctrl+c`, and ✌️/👌 to verify Emerald Green glow & `"ready"`
+- [x] Decoupled & shelved visual gesture engine: Converted `gesture_detector` to feature-flagged module (`/mnt/sdcard/enable_gesture`), terminated background process to free resources, preserved complete driver specs in `docs/GESTURE_ENGINE_ARCHIVE.md`
 - [ ] Initiate host screen streaming verification (`host_tools/stream_to_monitor.py` targeting 1600x600 framebuffer)
 
 ---
@@ -80,14 +80,13 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 - **Device Physical Status**: Allwinner V553 (`sun8iw21`) dashcam connected via single USB Type-C cable to host workstation (`usb:5-2.1` @ 480Mbps USB 2.0 High-Speed), providing both power and high-speed bidirectional data.
 - **Boot Source**: Fully booted from custom MicroSD card ext4 partition; factory `cdr` recording app is 100% blocked and isolated.
 - **Screen Display & Touch**: 1600x600 custom AI UI locked on screen; right-side Action Bar button touch flashing and event reporting physically verified 100%!
-- **User-Facing Camera**: Techpoint TP9950/TP9951 1080p sensor on `/dev/video8` actively streaming NV12 to `gesture_detector`.
+- **Standby Camera**: Techpoint TP9950/TP9951 1080p sensor on `/dev/video8` decoupled and preserved in standby.
 - **ADB Connectivity**: Active (`20080411 device usb:5-2.1`), non-interactive `adb shell` fully operational.
 - **Active Daemons on Target**:
   - PID 1: `/sbin/init`
   - PID 845: `/bin/sh /mnt/sdcard/init_usb_monitor.sh` (supervisor protection loop)
   - PID 904: `/bin/adbd -D` (480Mbps High-Speed ADB channel)
-  - PID 1717: `/mnt/sdcard/touch_cockpit` (Goodix GT911 Action Bar controller)
-  - PID 2317: `/mnt/sdcard/gesture_detector` (Visual Gesture AI engine on `/dev/video8`)
+  - PID 2594: `/mnt/sdcard/touch_cockpit` (Goodix GT911 Action Bar controller & UDP :8889 listener)
   - PID 943: `/mnt/sdcard/fb_receiver` (Listening on port `:5900`)
 - **Host Tools Ready**:
   - `host_tools/cockpit_agent.py` (Zero-typing terminal companion agent via ADB)

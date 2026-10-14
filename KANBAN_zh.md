@@ -70,7 +70,7 @@
 - [x] 实现跨进程全屏高亮视觉反馈联动：`gesture_detector` 通过本地 UDP 桥接（`127.0.0.1:8889`）通知 `touch_cockpit`，识别手势瞬间点亮全屏四边 24px 翡翠绿光环并联动右侧 `[PROCEED / READY]` 按钮高亮 300ms
 - [x] 优化手势判定响应灵敏度：将 ✌️ 与 👌 统一归并为正向确认意图，引入平滑衰减，将触发时延压缩至 ~160ms（12.5 fps 下仅需 2 帧稳定确认）
 - [x] 实现 ✊ 握拳（Closed Fist）停止/终止手势：基于 0 突出手指且几何长宽比（$0.65 \le W/H \le 1.35$）紧凑团块特征，与 ✌️/👌 形成特征空间最大对比度，稳定触发全屏 24px 深红光环、`[STOP / ABORT]` 按钮高亮及 `ctrl+c` 指令
-- [ ] 验证视觉手势识别：在朝向用户的摄像头前比划 ✊ 握拳验证深红反馈光环与 `ctrl+c`，比划 ✌️/👌 验证绿色光环与 `ready\n` 注入
+- [x] 解耦并封存视觉手势引擎：将 `gesture_detector` 改为特征开关门禁模式（`/mnt/sdcard/enable_gesture`），终止设备端后台进程以释放摄像头硬件与系统资源，全量驱动契约已双语归档至 `docs/GESTURE_ENGINE_ARCHIVE_zh.md`
 - [ ] 启动宿主机投屏测试（运行 `host_tools/stream_to_monitor.py` 验证 1600x600 显存投屏）
 
 ---
@@ -80,14 +80,13 @@
 - **物理连接状态**：全志 V553（`sun8iw21`）行车记录仪通过单根 USB Type-C 连入宿主机（`usb:5-2.1` @ 480Mbps USB 2.0 High-Speed），供电与数据双向畅通。
 - **启动引导源**：从 MicroSD 卡特制 ext4 分区完全引导，原厂 `cdr` 录像进程被 100% 隔离阻断。
 - **屏幕显示与触控状态**：1600x600 专属 AI 界面在物理屏幕上保持锁定显示；右侧 Action Bar 触控按压高亮闪烁与事件上报已实机验证 100% 成功！
-- **面向用户摄像头**：Techpoint TP9950/TP9951 1080p 传感器挂载于 `/dev/video8`，正以 NV12 格式向 `gesture_detector` 稳定供流。
+- **备用摄像头**：Techpoint TP9950/TP9951 1080p 传感器挂载于 `/dev/video8`，已解耦并在底层处于低功耗待机状态。
 - **ADB 连通性**：在线运行（`20080411 device usb:5-2.1`），非交互式 `adb shell` 畅通无阻。
 - **设备端运行守护进程**：
   - PID 1: `/sbin/init`
   - PID 845: `/bin/sh /mnt/sdcard/init_usb_monitor.sh`（监控死循环保护中）
   - PID 904: `/bin/adbd -D`（480Mbps 高速 ADB 通道）
-  - PID 1717: `/mnt/sdcard/touch_cockpit`（汇顶 GT911 动作条交互服务）
-  - PID 2317: `/mnt/sdcard/gesture_detector`（`/dev/video8` 视觉手势 AI 引擎）
+  - PID 2594: `/mnt/sdcard/touch_cockpit`（汇顶 GT911 动作条交互服务 & UDP :8889 监听）
   - PID 943: `/mnt/sdcard/fb_receiver`（监听 `:5900` 端口）
 - **宿主机端工具链**：
   - `host_tools/cockpit_agent.py`（ADB 触控事件捕获与终端零打字敲击伴侣）

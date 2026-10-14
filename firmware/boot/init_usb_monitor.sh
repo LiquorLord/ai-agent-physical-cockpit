@@ -125,9 +125,12 @@ if [ -x /mnt/sdcard/touch_cockpit ]; then
     echo "[OK] Touch Cockpit controller active"
 fi
 
-if [ -x /mnt/sdcard/gesture_detector ]; then
+# Visual Gesture Detector (Shelved / Feature Flagged: create /mnt/sdcard/enable_gesture to enable)
+if [ -f /mnt/sdcard/enable_gesture ] && [ -x /mnt/sdcard/gesture_detector ]; then
     /mnt/sdcard/gesture_detector >/tmp/gesture.log 2>&1 &
-    echo "[OK] Visual Gesture Detector active"
+    echo "[OK] Visual Gesture Detector active (via feature flag)"
+else
+    echo "[INFO] Visual Gesture Detector disabled (feature flag not set)"
 fi
 
 # 9. Dump full dmesg snapshot to SD card
