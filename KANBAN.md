@@ -80,13 +80,24 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 - [x] Verified Dual-Zone live streaming over high-speed ADB port 5900
 - [x] End-to-end integration test of live streaming alongside physical button touch injection
 
-### Phase 6: Full Cockpit Production Suite (Current Phase)
+### Phase 6: Full Cockpit Production Suite
 - [x] Action Bar Telemetry HUD: Integrated real-time digital clock (`HH:MM:SS`), V553 SoC core temperature (`/sys/class/thermal/thermal_zone0/temp`), CPU load, RAM usage, and active stream FPS into the right $400 \times 600$ Action Bar
 - [x] Full Printable ASCII Font Engine: Built complete 5x7 ASCII bitmap font supporting all digits, uppercase/lowercase letters, and punctuation marks
 - [x] Dynamic Touch Status History: Added real-time footer displaying last hardware action and timestamp (e.g. `LAST: READY (14:30:44)`)
 - [x] Unified Executive CLI (`./cockpit`): Single-command developer console orchestrating background streaming and foreground zero-typing PTY session with automated teardown
 - [x] Host Udev Rules & Installer: Built `host_tools/udev/99-agy-cockpit.rules` and `install_udev.sh` for non-root USB access and seamless plug-and-play
 - [x] Live Verified: Verified full `./cockpit` execution pipeline with simultaneous test streaming and hardware touch event reception
+
+### Phase 7: AGY Terminal Migration & 4-Button Tactile Cockpit (Current Phase)
+- [x] 4-Button Agile Pairing Console: Upgraded Action Bar to 4 tactile buttons tailored for Antigravity AI pair programming:
+  - 🟢 **【PROCEED】** ($Y: 46..154$): Sends `proceed\n` to approve plans or continue execution
+  - 🔵 **【GRILL-ME】** ($Y: 166..274$): Sends `/grill-me\n` to trigger interactive design interviews
+  - 🟣 **【PLAN】** ($Y: 286..394$): Sends `/plan\n` to enter structured planning mode
+  - 🔴 **【STOP】** ($Y: 406..514$): Sends `\x03` (Ctrl+C) to immediately abort execution
+- [x] Firmware Cross-Compilation: Cross-compiled `firmware/apps/touch_cockpit.go` in `homelink-build` container (Go 1.26 linux/armv7), deployed to target `/mnt/sdcard/touch_cockpit`, active under supervisor PID 2287
+- [x] PTY Bridge Extension: Expanded `host_tools/cockpit_agent.py` to parse and inject all 4 tactile actions with zero keyboard typing
+- [x] Desktop Integration & i3 Floating Window: Upgraded `./cockpit` to automatically spawn a dedicated borderless Alacritty window running `agy`, configured to float at 1200x600 in `i3-wm`
+- [x] Full-Pipeline Verification: Streamed live `agy` CLI to left 1200x600 viewport of physical 10.26" screen, leaving host dual monitors 100% free for code editing
 
 ---
 
@@ -95,25 +106,24 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 - **Device Physical Status**: Allwinner V553 (`sun8iw21`) dashcam connected via single USB Type-C cable to host workstation (`usb:5-2.1` @ 480Mbps USB 2.0 High-Speed), providing both power and high-speed bidirectional data.
 - **Boot Source**: Fully booted from custom MicroSD card ext4 partition; factory `cdr` recording app is 100% blocked and isolated.
 - **Screen Display & Touch**: 1600x600 BOE display partitioned into Dual Zones:
-  - Columns 0..1200: 1200x600 low-latency streaming viewport (managed by `fb_receiver`)
-  - Columns 1200..1600: 400x600 capacitive touch Action Bar + Telemetry HUD (managed by `touch_cockpit`)
+  - Columns 0..1200: 1200x600 low-latency streaming viewport displaying live `agy` CLI terminal
+  - Columns 1200..1600: 400x600 capacitive touch Action Bar (4 buttons: PROCEED, GRILL-ME, PLAN, STOP) + Telemetry HUD
 - **HUD Telemetry Active**: Real-time SoC temperature, CPU load, RAM usage, rolling stream FPS, digital clock, and touch history rendered dynamically.
 - **ADB Connectivity**: USB 2.0 High-Speed ADB channel (`18d1:d002` @ 480Mbps).
 - **Target Daemons**:
   - `fb_receiver`: Mmap dual-zone display receiver on ports 5900 (1200x600) & 5901 (1600x600)
-  - `touch_cockpit`: Goodix GT911 Action Bar controller & Telemetry HUD on `/dev/input/event0`
-  - `init_usb_monitor.sh`: Auto-respawn supervisor for `adbd`
-- **Host Tools Ready**:
-  - `./cockpit`: Unified executive console entrypoint
+  - `touch_cockpit`: Goodix GT911 4-Button Action Bar controller & Telemetry HUD on `/dev/input/event0` (PID 2287)
+  - `init_usb_monitor.sh`: Auto-respawn supervisor for daemons
+- **Host Processes Active**:
+  - `./cockpit`: Background task running dedicated Alacritty window + ffmpeg streaming + PTY bridge
   - `host_tools/cockpit_agent.py`: PTY Master interactive companion agent
-  - `host_tools/stream_to_monitor.py`: Dual-zone (1200x600) & full-screen (1600x600) streaming client
-  - `host_tools/udev/install_udev.sh`: Udev plug-and-play installer
+  - `host_tools/stream_to_monitor.py`: Streaming client locked on `AGY-Cockpit` window
 
 ---
 
 ## 5. Immediate Next Steps
 
-1. Run `./cockpit` to start full daily development workflow;
+1. Interact with `agy` directly on the physical screen using the 4 tactile buttons;
 2. Run `sudo host_tools/udev/install_udev.sh` to install permanent host udev permissions.
 
 

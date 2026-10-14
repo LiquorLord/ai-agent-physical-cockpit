@@ -80,13 +80,24 @@
 - [x] 实测双分区通过高频 ADB 端口 5900 实时投屏成功，显存逐行混合渲染正常
 - [x] 实机完成屏幕投屏与物理电容触控按键联调闭环
 
-### Phase 6: 全功能座舱生产力套件 (当前阶段)
+### Phase 6: 全功能座舱生产力套件
 - [x] 动作条状态仪表盘（HUD & Telemetry）：在右侧 400x600 动作条顶部、中部与底部嵌入动态数字时钟（`HH:MM:SS`）、V553 SoC 核心温度（`50.4°C`）、CPU 实时负载、RAM 内存占用及流式帧率（`STREAM: 25.0 FPS` / `IDLE`）
 - [x] 全字符 ASCII 点阵字库：开发完整 5x7 ASCII 点阵字模，支持数字、英文字符及常见工程标点，支持任意遥测文本与时间戳无损输出
 - [x] 动态触控历史状态记录：底部状态栏实时呈现最近一次物理按键动作与时间（如 `LAST: READY (14:30:44)`）
 - [x] 统一执行入口（Unified CLI `./cockpit`）：打造根目录单单词入口，自动管理后台低时延投屏子进程与前台免敲击 PTY 终端会话，支持退出时一键优雅回收
 - [x] 宿主机 Udev 即插即用规则：编写 `host_tools/udev/99-agy-cockpit.rules` 与自动化安装脚本 `install_udev.sh`，赋予普通用户免 Root 访问权限
 - [x] 端到端闭环验证：实测 `./cockpit` 流式推流与硬件按键交互毫秒级响应，零死锁、零残留进程
+
+### Phase 7: AGY 终端进驻实体座舱与四键中控实机落地 (当前阶段)
+- [x] 四键敏捷结对编程中控台：将右侧动作条重构为 4 个独立物理按键，完美闭环 Antigravity AI 结对开发流程：
+  - 🟢 **【PROCEED】**（$Y: 46..154$）：一键批准方案或继续执行（注入 `proceed\n`）
+  - 🔵 **【GRILL-ME】**（$Y: 166..274$）：一键切入架构深度审问模式（注入 `/grill-me\n`）
+  - 🟣 **【PLAN】**（$Y: 286..394$）：一键发起结构化方案制定（注入 `/plan\n`）
+  - 🔴 **【STOP】**（$Y: 406..514$）：随时紧急叫停或打断当前任务（注入 `\x03` Ctrl+C）
+- [x] 固件交叉编译与部署：在 `homelink-build` 隔离容器中交叉编译 ARMv7-A 静态二进制文件，推送到 SD 卡并由守护进程接管运行（PID 2287）
+- [x] PTY 桥接器扩展：升级 `host_tools/cockpit_agent.py`，完整解析并分发四键动作，物理按压零键盘输入
+- [x] 桌面与 i3-wm 浮动窗口集成：重构 `./cockpit`，自动拉起 1200x600 无边框极简 Alacritty 终端并设为 i3 浮动窗口，自动锁定并低延迟推流
+- [x] 终端全链路实机闭环：物理带鱼屏左侧 1200x600 视口完整呈现 `agy` 交互控制台，右侧四键实时触控响应，宿主机双显示器 100% 释放留给代码与浏览器
 
 ---
 
@@ -95,25 +106,25 @@
 - **物理连接状态**：全志 V553（`sun8iw21`）行车记录仪通过单根 USB Type-C 连入宿主机（`usb:5-2.1` @ 480Mbps USB 2.0 High-Speed），供电与数据双向畅通。
 - **启动引导源**：从 MicroSD 卡特制 ext4 分区完全引导，原厂 `cdr` 录像进程被 100% 隔离阻断。
 - **屏幕显示与触控状态**：1600x600 京东方超宽屏实现双分区物理隔离：
-  - 列 0..1200：1200x600 低延迟宿主机投屏视口（由 `fb_receiver` 驱动）
-  - 列 1200..1600：400x600 电容触控 Action Bar 动作条 + 遥测 HUD（由 `touch_cockpit` 驱动）
+  - 列 0..1200：1200x600 低延迟宿主机投屏视口，实时显示 `agy` 交互终端
+  - 列 1200..1600：400x600 电容触控 Action Bar 动作条（4键：PROCEED, GRILL-ME, PLAN, STOP）+ 遥测 HUD
 - **HUD 遥测在线**：数字时钟、SoC 核心温度、CPU 占用、RAM 使用量、流式推流帧率与触控历史实时动态刷新。
 - **ADB 连通性**：USB 2.0 High-Speed ADB 通道（`18d1:d002` @ 480Mbps）。
 - **设备端运行守护进程**：
   - `fb_receiver`: Mmap 硬件双分区帧缓冲接收服务（监听端口 5900 与 5901，维护 `/tmp/stream_fps`）
-  - `touch_cockpit`: 汇顶 GT911 动作条服务 & 遥测 HUD（`/dev/input/event0`）
-  - `init_usb_monitor.sh`: `adbd` 自动拉起守护监控
+  - `touch_cockpit`: 汇顶 GT911 四键动作条服务 & 遥测 HUD（`/dev/input/event0`，PID 2287）
+  - `init_usb_monitor.sh`: 进程自动拉起守护监控
 - **宿主机端工具链**：
-  - `./cockpit`: 统一控制台入口（集成投屏、PTY 与触控直通）
+  - `./cockpit`: 统一控制台入口（管理专用 Alacritty 终端、ffmpeg 推流与 PTY 桥接）
   - `host_tools/cockpit_agent.py`: PTY Master 交互式终端伴侣
-  - `host_tools/stream_to_monitor.py`: 双分区（1200x600）与全屏（1600x600）投屏客户端
+  - `host_tools/stream_to_monitor.py`: 锁定 `AGY-Cockpit` 窗口的双分区投屏客户端
   - `host_tools/udev/install_udev.sh`: 宿主机免 Root Udev 安装脚本
 
 ---
 
 ## 5. 当前第一步即时行动
 
-1. 在宿主机任意终端运行 `./cockpit` 即可开启日常沉浸式开发会话；
+1. 伸手触碰带鱼屏上的 4 个实体按键与 `agy` 展开交互；
 2. 运行 `sudo host_tools/udev/install_udev.sh` 固化免 Root Udev 规则。
 
 

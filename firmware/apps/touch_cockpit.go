@@ -46,19 +46,24 @@ const (
 	ScreenHeight = 600
 
 	// RGB565 Colors
-	ColorBlack      = uint16(0x0000)
-	ColorWhite      = uint16(0xFFFF)
-	ColorGreen      = uint16(0x07E0) // Emerald Green
-	ColorGreenDark  = uint16(0x03E0)
-	ColorGreenLight = uint16(0x97F2)
-	ColorRed        = uint16(0xF800) // Crimson Red
-	ColorRedDark    = uint16(0x8000)
-	ColorRedLight   = uint16(0xFCB2)
-	ColorCyan       = uint16(0x07FF)
-	ColorYellow     = uint16(0xFFE0)
-	ColorGray       = uint16(0x7BEF)
-	ColorDarkGray   = uint16(0x18C3)
-	ColorDivider    = uint16(0x3186)
+	ColorBlack       = uint16(0x0000)
+	ColorWhite       = uint16(0xFFFF)
+	ColorGreen       = uint16(0x07E0) // Emerald Green
+	ColorGreenDark   = uint16(0x03E0)
+	ColorGreenLight  = uint16(0x97F2)
+	ColorRed         = uint16(0xF800) // Crimson Red
+	ColorRedDark     = uint16(0x8000)
+	ColorRedLight    = uint16(0xFCB2)
+	ColorCyan        = uint16(0x07FF)
+	ColorCyanDark    = uint16(0x0270)
+	ColorCyanLight   = uint16(0x87FF)
+	ColorPurple      = uint16(0xA25F) // Royal Violet / Purple
+	ColorPurpleDark  = uint16(0x514E)
+	ColorPurpleLight = uint16(0xE3BF)
+	ColorYellow      = uint16(0xFFE0)
+	ColorGray        = uint16(0x7BEF)
+	ColorDarkGray    = uint16(0x18C3)
+	ColorDivider     = uint16(0x3186)
 
 	FBIOGET_VSCREENINFO = 0x4600
 	FBIOPAN_DISPLAY     = 0x4606
@@ -254,53 +259,74 @@ func (ui *CockpitUI) renderButtons(activeButton int) {
 	ui.DrawRect(1200, 0, 400, ScreenHeight, ColorDarkGray)
 	ui.DrawRect(1198, 0, 3, ScreenHeight, ColorDivider) // Divider border
 
-	// 2. Top Header HUD (Y: 0..48)
+	// 2. Top Header HUD (Y: 0..44)
 	clockStr := time.Now().Format("15:04:05")
-	ui.DrawText(1240, 10, clockStr, 2, ColorCyan)
+	ui.DrawText(1240, 8, clockStr, 2, ColorCyan)
 	tempStr := fmt.Sprintf("SOC: %.1fC  CPU: %d%%", ui.metrics.TempC, ui.metrics.CpuUsage)
-	ui.DrawText(1240, 32, tempStr, 1, ColorGreenLight)
+	ui.DrawText(1240, 28, tempStr, 1, ColorGreenLight)
 
-	// 3. Button 1: [READY / PROCEED] (Y: 55..275)
+	// 3. Button 1: [PROCEED] (Y: 46..154)
 	btn1Color := ColorGreenDark
 	btn1Border := ColorGreen
 	if activeButton == 1 {
 		btn1Color = ColorWhite
 		btn1Border = ColorGreenLight
 	}
-	ui.DrawRect(1230, 55, 340, 220, btn1Color)
-	ui.DrawFrame(1230, 55, 340, 220, 4, btn1Border)
-	ui.DrawText(1280, 115, "PROCEED", 4, ColorWhite)
-	ui.DrawText(1325, 175, "READY", 3, ColorGreenLight)
+	ui.DrawRect(1220, 46, 360, 108, btn1Color)
+	ui.DrawFrame(1220, 46, 360, 108, 3, btn1Border)
+	ui.DrawText(1285, 66, "PROCEED", 3, ColorWhite)
+	ui.DrawText(1300, 112, "[ READY / OK ]", 2, ColorGreenLight)
 
-	// 4. Middle Telemetry Bar (Y: 285..325)
-	streamStr := fmt.Sprintf("STREAM: %s", ui.metrics.StreamFps)
+	// 4. Button 2: [GRILL-ME] (Y: 166..274)
+	btn2Color := ColorCyanDark
+	btn2Border := ColorCyan
+	if activeButton == 2 {
+		btn2Color = ColorWhite
+		btn2Border = ColorCyanLight
+	}
+	ui.DrawRect(1220, 166, 360, 108, btn2Color)
+	ui.DrawFrame(1220, 166, 360, 108, 3, btn2Border)
+	ui.DrawText(1275, 186, "GRILL-ME", 3, ColorWhite)
+	ui.DrawText(1320, 232, "[ ALIGN ]", 2, ColorCyanLight)
+
+	// 5. Button 3: [PLAN] (Y: 286..394)
+	btn3Color := ColorPurpleDark
+	btn3Border := ColorPurple
+	if activeButton == 3 {
+		btn3Color = ColorWhite
+		btn3Border = ColorPurpleLight
+	}
+	ui.DrawRect(1220, 286, 360, 108, btn3Color)
+	ui.DrawFrame(1220, 286, 360, 108, 3, btn3Border)
+	ui.DrawText(1335, 306, "PLAN", 3, ColorWhite)
+	ui.DrawText(1310, 352, "[ DESIGN ]", 2, ColorPurpleLight)
+
+	// 6. Button 4: [STOP] (Y: 406..514)
+	btn4Color := ColorRedDark
+	btn4Border := ColorRed
+	if activeButton == 4 {
+		btn4Color = ColorWhite
+		btn4Border = ColorRedLight
+	}
+	ui.DrawRect(1220, 406, 360, 108, btn4Color)
+	ui.DrawFrame(1220, 406, 360, 108, 3, btn4Border)
+	ui.DrawText(1335, 426, "STOP", 3, ColorWhite)
+	ui.DrawText(1315, 472, "[ ABORT ]", 2, ColorRedLight)
+
+	// 7. Footer Telemetry & Tracker (Y: 524..598)
+	streamStr := fmt.Sprintf("STREAM: %s  RAM: %dM", ui.metrics.StreamFps, ui.metrics.RamUsedMB)
 	streamColor := ColorYellow
 	if strings.Contains(ui.metrics.StreamFps, "FPS") {
 		streamColor = ColorCyan
 	}
-	ui.DrawText(1240, 290, streamStr, 1, streamColor)
-	ramStr := fmt.Sprintf("RAM: %dM / %dM", ui.metrics.RamUsedMB, ui.metrics.RamTotalMB)
-	ui.DrawText(1240, 308, ramStr, 1, ColorGray)
+	ui.DrawText(1240, 532, streamStr, 1, streamColor)
 
-	// 5. Button 2: [STOP / ABORT] (Y: 335..555)
-	btn2Color := ColorRedDark
-	btn2Border := ColorRed
-	if activeButton == 2 {
-		btn2Color = ColorWhite
-		btn2Border = ColorRedLight
-	}
-	ui.DrawRect(1230, 335, 340, 220, btn2Color)
-	ui.DrawFrame(1230, 335, 340, 220, 4, btn2Border)
-	ui.DrawText(1330, 395, "STOP", 4, ColorWhite)
-	ui.DrawText(1325, 455, "ABORT", 3, ColorRedLight)
-
-	// 6. Bottom Footer (Y: 565..595)
-	ui.DrawText(1240, 568, "AGY COCKPIT • V553 CORTEX-A7", 1, ColorDivider)
 	lastStr := ui.metrics.LastAction
 	if ui.metrics.LastActionTime != "" {
 		lastStr = fmt.Sprintf("LAST: %s (%s)", ui.metrics.LastAction, ui.metrics.LastActionTime)
 	}
-	ui.DrawText(1240, 582, lastStr, 1, ColorGreenLight)
+	ui.DrawText(1240, 552, lastStr, 1, ColorGreenLight)
+	ui.DrawText(1240, 574, "AGY COCKPIT • V553 CORTEX-A7", 1, ColorDivider)
 }
 
 func (ui *CockpitUI) RenderActionBar(activeButton int) {
@@ -314,29 +340,32 @@ func (ui *CockpitUI) FlashFeedback(action string) {
 	ui.mu.Lock()
 	ui.metrics.LastAction = strings.ToUpper(action)
 	ui.metrics.LastActionTime = time.Now().Format("15:04:05")
-	if action == "ready" {
-		ui.renderButtons(1)
+	activeBtn := 0
+	switch action {
+	case "proceed", "ready":
+		activeBtn = 1
+	case "grill-me", "grill":
+		activeBtn = 2
+	case "plan":
+		activeBtn = 3
+	case "ctrl+c", "stop":
+		activeBtn = 4
+	}
+
+	if activeBtn > 0 {
+		ui.renderButtons(activeBtn)
 		ui.Flip()
 		ui.mu.Unlock()
 
-		time.Sleep(300 * time.Millisecond)
-
-		ui.mu.Lock()
-		ui.renderButtons(0)
-		ui.Flip()
-		ui.mu.Unlock()
-	} else if action == "ctrl+c" {
-		ui.renderButtons(2)
-		ui.Flip()
-		ui.mu.Unlock()
-
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(250 * time.Millisecond)
 
 		ui.mu.Lock()
 		ui.renderButtons(0)
 		ui.Flip()
 		ui.mu.Unlock()
 	} else {
+		ui.renderButtons(0)
+		ui.Flip()
 		ui.mu.Unlock()
 	}
 }
@@ -556,23 +585,41 @@ func main() {
 
 					log.Printf("[TOUCH] Detected at Screen(%d, %d)", screenX, screenY)
 
-					if time.Since(lastAction) >= 400*time.Millisecond {
-						// Button 1: [READY / PROCEED] (Y: 40..285)
-						if screenX >= 1200 && screenY >= 40 && screenY <= 285 {
-							lastAction = time.Now()
-							log.Printf("[HIT] Button 1 [READY / PROCEED] Hit at (%d, %d)", screenX, screenY)
-							if ui != nil {
-								ui.FlashFeedback("ready")
+					if time.Since(lastAction) >= 350*time.Millisecond {
+						if screenX >= 1200 {
+							if screenY >= 40 && screenY < 160 {
+								// Button 1: [PROCEED]
+								lastAction = time.Now()
+								log.Printf("[HIT] Button 1 [PROCEED] Hit at (%d, %d)", screenX, screenY)
+								if ui != nil {
+									ui.FlashFeedback("proceed")
+								}
+								go sendKeystroke("proceed")
+							} else if screenY >= 160 && screenY < 280 {
+								// Button 2: [GRILL-ME]
+								lastAction = time.Now()
+								log.Printf("[HIT] Button 2 [GRILL-ME] Hit at (%d, %d)", screenX, screenY)
+								if ui != nil {
+									ui.FlashFeedback("grill-me")
+								}
+								go sendKeystroke("grill-me")
+							} else if screenY >= 280 && screenY < 400 {
+								// Button 3: [PLAN]
+								lastAction = time.Now()
+								log.Printf("[HIT] Button 3 [PLAN] Hit at (%d, %d)", screenX, screenY)
+								if ui != nil {
+									ui.FlashFeedback("plan")
+								}
+								go sendKeystroke("plan")
+							} else if screenY >= 400 && screenY <= 525 {
+								// Button 4: [STOP / ABORT]
+								lastAction = time.Now()
+								log.Printf("[HIT] Button 4 [STOP / ABORT] Hit at (%d, %d)", screenX, screenY)
+								if ui != nil {
+									ui.FlashFeedback("ctrl+c")
+								}
+								go sendKeystroke("ctrl+c")
 							}
-							go sendKeystroke("ready")
-						} else if screenX >= 1200 && screenY >= 325 && screenY <= 565 {
-							// Button 2: [STOP / ABORT] (Y: 325..565)
-							lastAction = time.Now()
-							log.Printf("[HIT] Button 2 [STOP / ABORT] Hit at (%d, %d)", screenX, screenY)
-							if ui != nil {
-								ui.FlashFeedback("ctrl+c")
-							}
-							go sendKeystroke("ctrl+c")
 						}
 					}
 				}

@@ -72,15 +72,29 @@ def event_listener_thread(master_fd=None, stop_event=None):
                 if not action:
                     continue
 
-                if "ready" in action:
-                    log("🎯 Physical Touch: [READY / PROCEED] pressed! -> Injecting 'ready\\n'")
+                if "proceed" in action or "ready" in action:
+                    log("🟢 Physical Touch: [PROCEED] pressed! -> Injecting 'proceed\\n'")
                     if master_fd is not None:
                         try:
-                            os.write(master_fd, b"ready\n")
+                            os.write(master_fd, b"proceed\n")
+                        except OSError:
+                            break
+                elif "grill" in action:
+                    log("🔵 Physical Touch: [GRILL-ME] pressed! -> Injecting '/grill-me\\n'")
+                    if master_fd is not None:
+                        try:
+                            os.write(master_fd, b"/grill-me\n")
+                        except OSError:
+                            break
+                elif "plan" in action:
+                    log("🟣 Physical Touch: [PLAN] pressed! -> Injecting '/plan\\n'")
+                    if master_fd is not None:
+                        try:
+                            os.write(master_fd, b"/plan\n")
                         except OSError:
                             break
                 elif "ctrl+c" in action or "stop" in action:
-                    log("🛑 Physical Touch: [STOP / ABORT] pressed! -> Injecting Ctrl+C")
+                    log("🔴 Physical Touch: [STOP / ABORT] pressed! -> Injecting Ctrl+C (\\x03)")
                     if master_fd is not None:
                         try:
                             os.write(master_fd, b"\x03")
