@@ -71,14 +71,22 @@
 - [x] 优化手势判定响应灵敏度：将 ✌️ 与 👌 统一归并为正向确认意图，引入平滑衰减，将触发时延压缩至 ~160ms（12.5 fps 下仅需 2 帧稳定确认）
 - [x] 实现 ✊ 握拳（Closed Fist）停止/终止手势：基于 0 突出手指且几何长宽比（$0.65 \le W/H \le 1.35$）紧凑团块特征，与 ✌️/👌 形成特征空间最大对比度，稳定触发全屏 24px 深红光环、`[STOP / ABORT]` 按钮高亮及 `ctrl+c` 指令
 - [x] 解耦并封存视觉手势引擎：将 `gesture_detector` 改为特征开关门禁模式（`/mnt/sdcard/enable_gesture`），终止设备端后台进程以释放摄像头硬件与系统资源，全量驱动契约已双语归档至 `docs/GESTURE_ENGINE_ARCHIVE_zh.md`
-### Phase 5: 屏幕双分区投屏与 PTY Master 零输入终端架构 (当前阶段)
+### Phase 5: 屏幕双分区投屏与 PTY Master 零输入终端架构
 - [x] 设计屏幕双分区架构：左侧 1200x600 作为宿主机低延迟代码/日志视口 + 右侧 400x600 保持汇顶 GT911 电容触控 Action Bar 物理常驻
 - [x] 升级 `fb_receiver`：支持双端口并行监听（5900 端口 1200x600 双分区，5901 端口 1600x600 全屏），引入底层硬件显存零拷贝 `mmap` 逐行渲染，完全不触碰右侧 1200..1600 动作条
 - [x] 升级 `touch_cockpit`：全面切换至底层硬件显存零拷贝 `mmap`，严格将绘制与刷新范围约束在右侧 1200..1600 区域，彻底消除整屏覆写与闪烁
 - [x] 升级 `stream_to_monitor.py`：新增 `--mode dual`（默认 1200x600 -> 端口 5900）与 `--mode full`（1600x600 -> 端口 5901），配置 ffmpeg 超低延迟流水线与 `--test` 动态性能基准图案
 - [x] 升级 `cockpit_agent.py`：基于 POSIX PTY Master 架构重构，原生接管 `$SHELL` 或任意 CLI（如 `agy`），100% 绕过 Linux 6.x 内核 TIOCSTI 安全限制，按压屏幕物理按键直接向终端子进程标准输入写入 `ready\n` 与 `Ctrl+C`
 - [x] 实测双分区通过高频 ADB 端口 5900 实时投屏成功，显存逐行混合渲染正常
-- [ ] 实机完成屏幕投屏与物理电容触控按键联调闭环
+- [x] 实机完成屏幕投屏与物理电容触控按键联调闭环
+
+### Phase 6: 全功能座舱生产力套件 (当前阶段)
+- [x] 动作条状态仪表盘（HUD & Telemetry）：在右侧 400x600 动作条顶部、中部与底部嵌入动态数字时钟（`HH:MM:SS`）、V553 SoC 核心温度（`50.4°C`）、CPU 实时负载、RAM 内存占用及流式帧率（`STREAM: 25.0 FPS` / `IDLE`）
+- [x] 全字符 ASCII 点阵字库：开发完整 5x7 ASCII 点阵字模，支持数字、英文字符及常见工程标点，支持任意遥测文本与时间戳无损输出
+- [x] 动态触控历史状态记录：底部状态栏实时呈现最近一次物理按键动作与时间（如 `LAST: READY (14:30:44)`）
+- [x] 统一执行入口（Unified CLI `./cockpit`）：打造根目录单单词入口，自动管理后台低时延投屏子进程与前台免敲击 PTY 终端会话，支持退出时一键优雅回收
+- [x] 宿主机 Udev 即插即用规则：编写 `host_tools/udev/99-agy-cockpit.rules` 与自动化安装脚本 `install_udev.sh`，赋予普通用户免 Root 访问权限
+- [x] 端到端闭环验证：实测 `./cockpit` 流式推流与硬件按键交互毫秒级响应，零死锁、零残留进程
 
 ---
 
@@ -88,24 +96,26 @@
 - **启动引导源**：从 MicroSD 卡特制 ext4 分区完全引导，原厂 `cdr` 录像进程被 100% 隔离阻断。
 - **屏幕显示与触控状态**：1600x600 京东方超宽屏实现双分区物理隔离：
   - 列 0..1200：1200x600 低延迟宿主机投屏视口（由 `fb_receiver` 驱动）
-  - 列 1200..1600：400x600 电容触控 Action Bar 动作条（由 `touch_cockpit` 驱动）
-- **备用摄像头**：Techpoint TP9950/TP9951 1080p 传感器挂载于 `/dev/video8`，已解耦并在门禁文件 `/mnt/sdcard/enable_gesture` 保护下处于待机状态。
+  - 列 1200..1600：400x600 电容触控 Action Bar 动作条 + 遥测 HUD（由 `touch_cockpit` 驱动）
+- **HUD 遥测在线**：数字时钟、SoC 核心温度、CPU 占用、RAM 使用量、流式推流帧率与触控历史实时动态刷新。
 - **ADB 连通性**：USB 2.0 High-Speed ADB 通道（`18d1:d002` @ 480Mbps）。
 - **设备端运行守护进程**：
-  - `fb_receiver`: Mmap 硬件双分区帧缓冲接收服务（监听端口 5900 与 5901）
-  - `touch_cockpit`: 汇顶 GT911 动作条服务（`/dev/input/event0`）
+  - `fb_receiver`: Mmap 硬件双分区帧缓冲接收服务（监听端口 5900 与 5901，维护 `/tmp/stream_fps`）
+  - `touch_cockpit`: 汇顶 GT911 动作条服务 & 遥测 HUD（`/dev/input/event0`）
   - `init_usb_monitor.sh`: `adbd` 自动拉起守护监控
 - **宿主机端工具链**：
+  - `./cockpit`: 统一控制台入口（集成投屏、PTY 与触控直通）
   - `host_tools/cockpit_agent.py`: PTY Master 交互式终端伴侣
   - `host_tools/stream_to_monitor.py`: 双分区（1200x600）与全屏（1600x600）投屏客户端
+  - `host_tools/udev/install_udev.sh`: 宿主机免 Root Udev 安装脚本
 
 ---
 
 ## 5. 当前第一步即时行动
 
-1. 重新插拔 USB Type-C 或按复位键重启设备，加载最新守护；
-2. 运行 `python3 host_tools/stream_to_monitor.py --test` 开启 1200x600 动态测试投屏；
-3. 运行 `python3 host_tools/cockpit_agent.py` 验证物理按压免打字终端交互。
+1. 在宿主机任意终端运行 `./cockpit` 即可开启日常沉浸式开发会话；
+2. 运行 `sudo host_tools/udev/install_udev.sh` 固化免 Root Udev 规则。
+
 
 
 

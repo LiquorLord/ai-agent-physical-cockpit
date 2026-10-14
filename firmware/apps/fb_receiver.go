@@ -79,14 +79,42 @@ func startWatchdogFeeder() {
 }
 
 type DisplayServer struct {
-	fbFile *os.File
-	fbMem  []byte
-	vinfo  FbVarScreeninfo
-	mu     sync.Mutex
+	fbFile     *os.File
+	fbMem      []byte
+	vinfo      FbVarScreeninfo
+	mu         sync.Mutex
+	frameTotal uint64
 }
 
 func (ds *DisplayServer) panDisplay() {
 	syscall.Syscall(syscall.SYS_IOCTL, ds.fbFile.Fd(), FBIOPAN_DISPLAY, uintptr(unsafe.Pointer(&ds.vinfo)))
+}
+
+func (ds *DisplayServer) startFpsReporter() {
+	_ = os.WriteFile("/tmp/stream_fps", []byte("IDLE"), 0666)
+	go func() {
+		var lastCount uint64 = 0
+		lastTime := time.Now()
+		for {
+			time.Sleep(1 * time.Second)
+			now := time.Now()
+			ds.mu.Lock()
+			currCount := ds.frameTotal
+			ds.mu.Unlock()
+
+			delta := currCount - lastCount
+			elapsed := now.Sub(lastTime).Seconds()
+			lastCount = currCount
+			lastTime = now
+
+			if delta > 0 && elapsed > 0 {
+				fps := float64(delta) / elapsed
+				_ = os.WriteFile("/tmp/stream_fps", []byte(fmt.Sprintf("%.1f FPS", fps)), 0666)
+			} else {
+				_ = os.WriteFile("/tmp/stream_fps", []byte("IDLE"), 0666)
+			}
+		}
+	}()
 }
 
 func (ds *DisplayServer) handleDualZoneStream(conn net.Conn) {
@@ -115,6 +143,7 @@ func (ds *DisplayServer) handleDualZoneStream(conn net.Conn) {
 			copy(ds.fbMem[destOffset:destOffset+DualZoneRowBytes], frameBuf[srcOffset:srcOffset+DualZoneRowBytes])
 		}
 		ds.panDisplay()
+		ds.frameTotal++
 		ds.mu.Unlock()
 
 		frameCount++
@@ -151,6 +180,7 @@ func (ds *DisplayServer) handleFullScreenStream(conn net.Conn) {
 		ds.mu.Lock()
 		copy(ds.fbMem[0:FullFrameSize], frameBuf[0:FullFrameSize])
 		ds.panDisplay()
+		ds.frameTotal++
 		ds.mu.Unlock()
 
 		frameCount++
@@ -199,6 +229,7 @@ func main() {
 		fbMem:  fbMem,
 		vinfo:  v,
 	}
+	ds.startFpsReporter()
 
 	// Setup listeners
 	lDual, err := net.Listen("tcp", DualZonePort)
