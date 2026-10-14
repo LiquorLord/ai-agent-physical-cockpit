@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -10,10 +11,11 @@ import (
 	"unsafe"
 )
 
-// Standard V4L2 ioctl constants
+// Linux Multi-Planar V4L2 ioctl constants
 const (
 	VIDIOC_QUERYCAP  = 0x80685600
-	VIDIOC_S_FMT     = 0xc0d05605 // 32-bit v4l2_format
+	VIDIOC_G_FMT     = 0xc0cc5604
+	VIDIOC_S_FMT     = 0xc0cc5605
 	VIDIOC_REQBUFS   = 0xc0145608
 	VIDIOC_QUERYBUF  = 0xc0445609
 	VIDIOC_QBUF      = 0xc044560f
@@ -21,14 +23,13 @@ const (
 	VIDIOC_STREAMON  = 0x40045612
 	VIDIOC_STREAMOFF = 0x40045613
 
-	V4L2_BUF_TYPE_VIDEO_CAPTURE = 1
-	V4L2_MEMORY_MMAP            = 1
+	V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE = 9
+	V4L2_MEMORY_MMAP                   = 1
 
 	V4L2_PIX_FMT_NV12 = 0x3231564E // 'NV12'
-	V4L2_PIX_FMT_YUYV = 0x56595559 // 'YUYV'
 
-	CapWidth  = 640
-	CapHeight = 480
+	CapWidth  = 1280
+	CapHeight = 720
 
 	ScreenWidth  = 1600
 	ScreenHeight = 600
@@ -46,45 +47,54 @@ type v4l2_requestbuffers struct {
 	reserved [2]uint32
 }
 
-type v4l2_timeval struct {
-	tv_sec  int32
-	tv_usec int32
+type v4l2_plane struct {
+	bytesused   uint32
+	length      uint32
+	mem_offset  uint32
+	data_offset uint32
+	reserved    [11]uint32
 }
 
-type v4l2_buffer struct {
+type v4l2_buffer_mp struct {
 	index     uint32
 	buf_type  uint32
 	bytesused uint32
 	flags     uint32
 	field     uint32
-	timestamp v4l2_timeval
+	timestamp [8]byte
 	timecode  [16]byte
 	sequence  uint32
 	memory    uint32
-	offset    uint32 // m.offset
-	length    uint32
+	planes    uintptr // *v4l2_plane
+	length    uint32  // number of planes = 1
 	reserved2 uint32
 	reserved  uint32
 }
 
-type v4l2_pix_format struct {
+type v4l2_plane_pix_format struct {
+	sizeimage    uint32
+	bytesperline uint32
+	reserved     [6]uint16
+}
+
+type v4l2_pix_format_mplane struct {
 	width        uint32
 	height       uint32
 	pixelformat  uint32
 	field        uint32
-	bytesperline uint32
-	sizeimage    uint32
 	colorspace   uint32
-	priv         uint32
-	flags        uint32
-	ycbcr_enc    uint32
-	quantization uint32
-	xfer_func    uint32
+	plane_fmt    [8]v4l2_plane_pix_format
+	num_planes   uint8
+	flags        uint8
+	ycbcr_enc    uint8
+	quantization uint8
+	xfer_func    uint8
+	reserved     [7]uint8
 }
 
-type v4l2_format struct {
+type v4l2_format_mp struct {
 	buf_type uint32
-	fmt      [200]byte // union encompassing v4l2_pix_format
+	fmt      [200]byte
 }
 
 type FbBitfield struct {
@@ -146,7 +156,13 @@ func flashFeedbackBorder(colorRGB565 uint16) {
 func sendGestureKey(action string) {
 	log.Printf("[gesture_detector] >>> TRIGGER ACTION: %s <<<", action)
 
-	// Direct HID injection
+	// Append to /tmp/cockpit_event.log for host companion monitoring
+	if f, err := os.OpenFile("/tmp/cockpit_event.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666); err == nil {
+		fmt.Fprintf(f, "%s\n", action)
+		f.Close()
+	}
+
+	// Direct HID injection if /dev/hidg0 exists
 	hid, err := os.OpenFile("/dev/hidg0", os.O_WRONLY, 0666)
 	if err == nil {
 		defer hid.Close()
@@ -173,7 +189,6 @@ func sendGestureKey(action string) {
 
 // Lightweight hand gesture classifier based on morphological convexity & finger peaks
 func classifyHandPose(gray []byte, w, h int) string {
-	// Sample center window (320x240 inside 640x480)
 	cropX1 := w / 4
 	cropX2 := 3 * w / 4
 	cropY1 := h / 4
@@ -182,9 +197,9 @@ func classifyHandPose(gray []byte, w, h int) string {
 	// 1. Calculate average luminance in crop window
 	var sum int64
 	count := 0
-	for y := cropY1; y < cropY2; y += 4 {
+	for y := cropY1; y < cropY2; y += 2 {
 		row := y * w
-		for x := cropX1; x < cropX2; x += 4 {
+		for x := cropX1; x < cropX2; x += 2 {
 			sum += int64(gray[row+x])
 			count++
 		}
@@ -194,22 +209,20 @@ func classifyHandPose(gray []byte, w, h int) string {
 	}
 	avgLum := byte(sum / int64(count))
 
-	// If too dark or too bright, skip
-	if avgLum < 30 || avgLum > 230 {
+	// Skip if too dark or too washed out
+	if avgLum < 20 || avgLum > 235 {
 		return ""
 	}
 
 	// 2. Count columns with vertical foreground extent (finger columns)
-	// Fingertips appear as distinct column peaks separated by background valleys
-	fgColumns := make([]int, (cropX2-cropX1)/4)
+	fgColumns := make([]int, (cropX2-cropX1)/2)
 	colIdx := 0
-	for x := cropX1; x < cropX2; x += 4 {
+	for x := cropX1; x < cropX2; x += 2 {
 		fgPixels := 0
-		for y := cropY1; y < cropY2; y += 4 {
+		for y := cropY1; y < cropY2; y += 2 {
 			val := gray[y*w+x]
-			// Difference from local average indicates foreground hand
 			diff := int(val) - int(avgLum)
-			if diff > 25 || diff < -25 {
+			if diff > 20 || diff < -20 {
 				fgPixels++
 			}
 		}
@@ -220,33 +233,21 @@ func classifyHandPose(gray []byte, w, h int) string {
 	// 3. Count peaks in column profile
 	peaks := 0
 	inPeak := false
-	peakWidth := 0
-	for _, val := range fgColumns {
-		if val > 12 { // Threshold for hand presence in column
-			if !inPeak {
+	peakThreshold := (cropY2 - cropY1) / 5
+
+	for i := 1; i < len(fgColumns)-1; i++ {
+		val := fgColumns[i]
+		if val > peakThreshold {
+			if !inPeak && val > fgColumns[i-1] {
+				peaks++
 				inPeak = true
-				peakWidth = 1
-			} else {
-				peakWidth++
 			}
 		} else {
-			if inPeak {
-				if peakWidth >= 2 && peakWidth <= 12 {
-					peaks++
-				}
-				inPeak = false
-				peakWidth = 0
-			}
+			inPeak = false
 		}
 	}
-	if inPeak && peakWidth >= 2 && peakWidth <= 12 {
-		peaks++
-	}
 
-	// Classify:
-	// 2 distinct peaks -> V-Sign / Peace
-	// 3 distinct peaks + compact palm -> OK Gesture
-	// 5 distinct peaks -> Stop
+	// Heuristic Decision Boundary
 	if peaks == 2 {
 		return "V_SIGN"
 	} else if peaks == 3 {
@@ -264,13 +265,13 @@ func main() {
 	var fd int
 	var err error
 
-	// Wait up to 30s for camera device to become available
-	for i := 0; i < 15; i++ {
-		fd, err = syscall.Open("/dev/video0", syscall.O_RDWR|syscall.O_NONBLOCK, 0666)
+	// Wait up to 10s for camera device
+	for i := 0; i < 5; i++ {
+		fd, err = syscall.Open("/dev/video0", syscall.O_RDWR, 0666)
 		if err == nil {
 			break
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 	if err != nil {
 		log.Fatalf("[!] Failed to open /dev/video0: %v", err)
@@ -279,55 +280,72 @@ func main() {
 
 	log.Println("[+] Successfully opened /dev/video0")
 
-	// Set Video Format (NV12 or YUYV 640x480)
-	var fmtReq v4l2_format
-	fmtReq.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE
-	pix := (*v4l2_pix_format)(unsafe.Pointer(&fmtReq.fmt[0]))
-	pix.width = CapWidth
-	pix.height = CapHeight
-	pix.pixelformat = V4L2_PIX_FMT_NV12
-	pix.field = 1 // V4L2_FIELD_NONE
+	// 1. Select Input 0
+	var input int32 = 0
+	syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), 0xc0045627, uintptr(unsafe.Pointer(&input)))
 
-	syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_S_FMT, uintptr(unsafe.Pointer(&fmtReq)))
+	// 2. Set Video Format (1280x720 NV12 MPLANE)
+	var sfmt v4l2_format_mp
+	sfmt.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
+	smp := (*v4l2_pix_format_mplane)(unsafe.Pointer(&sfmt.fmt[0]))
+	smp.width = CapWidth
+	smp.height = CapHeight
+	smp.pixelformat = V4L2_PIX_FMT_NV12
+	smp.field = 1 // V4L2_FIELD_NONE
+	smp.num_planes = 1
+	smp.plane_fmt[0].sizeimage = CapWidth * CapHeight * 3 / 2
+	smp.plane_fmt[0].bytesperline = CapWidth
 
-	// Request 2 MMAP buffers
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_S_FMT, uintptr(unsafe.Pointer(&sfmt)))
+	if errno != 0 {
+		log.Fatalf("[-] VIDIOC_S_FMT failed: %v", errno)
+	}
+	log.Printf("[+] Negotiated Video Format: %dx%d NV12 (planes=%d)", smp.width, smp.height, smp.num_planes)
+
+	// 3. Request 3 MMAP buffers
 	var req v4l2_requestbuffers
-	req.count = 2
-	req.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE
+	req.count = 3
+	req.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
 	req.memory = V4L2_MEMORY_MMAP
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req)))
+	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req)))
 	if errno != 0 {
 		log.Fatalf("[-] VIDIOC_REQBUFS failed: %v", errno)
 	}
 
-	// Map buffers
+	// 4. Map buffers
 	type Buffer struct {
 		start  []byte
 		length int
 	}
 	buffers := make([]Buffer, req.count)
+	planes := make([]v4l2_plane, req.count)
 
 	for i := uint32(0); i < req.count; i++ {
-		var buf v4l2_buffer
-		buf.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE
-		buf.memory = V4L2_MEMORY_MMAP
-		buf.index = i
+		var qbuf v4l2_buffer_mp
+		qbuf.index = i
+		qbuf.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
+		qbuf.memory = V4L2_MEMORY_MMAP
+		qbuf.planes = uintptr(unsafe.Pointer(&planes[i]))
+		qbuf.length = 1
 
-		syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&buf)))
+		syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&qbuf)))
 
-		mmap, err := syscall.Mmap(fd, int64(buf.offset), int(buf.length), syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
+		mmap, err := syscall.Mmap(fd, int64(planes[i].mem_offset), int(planes[i].length), syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
 		if err != nil {
 			log.Fatalf("[-] Mmap failed for buf %d: %v", i, err)
 		}
-		buffers[i] = Buffer{start: mmap, length: int(buf.length)}
+		buffers[i] = Buffer{start: mmap, length: int(planes[i].length)}
 
 		// Queue buffer
-		syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_QBUF, uintptr(unsafe.Pointer(&buf)))
+		syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_QBUF, uintptr(unsafe.Pointer(&qbuf)))
 	}
 
-	// Start video streaming
-	streamType := uint32(V4L2_BUF_TYPE_VIDEO_CAPTURE)
-	syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_STREAMON, uintptr(unsafe.Pointer(&streamType)))
+	// 5. Start streaming
+	streamType := uint32(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
+	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_STREAMON, uintptr(unsafe.Pointer(&streamType)))
+	if errno != 0 {
+		log.Fatalf("[-] VIDIOC_STREAMON failed: %v", errno)
+	}
 	defer syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&streamType)))
 
 	log.Println("[+] Camera stream active! Monitoring for ✌️ V / 👌 OK / ✋ Stop gestures...")
@@ -340,13 +358,19 @@ func main() {
 	)
 
 	frameIndex := 0
-	for {
-		var buf v4l2_buffer
-		buf.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE
-		buf.memory = V4L2_MEMORY_MMAP
+	subW := CapWidth / 8  // 160
+	subH := CapHeight / 8 // 90
+	subGray := make([]byte, subW*subH)
 
-		// Dequeue frame
-		_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_DQBUF, uintptr(unsafe.Pointer(&buf)))
+	for {
+		var dqbuf v4l2_buffer_mp
+		var dqplane v4l2_plane
+		dqbuf.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
+		dqbuf.memory = V4L2_MEMORY_MMAP
+		dqbuf.planes = uintptr(unsafe.Pointer(&dqplane))
+		dqbuf.length = 1
+
+		_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_DQBUF, uintptr(unsafe.Pointer(&dqbuf)))
 		if errno != 0 {
 			if errno == syscall.EAGAIN {
 				time.Sleep(10 * time.Millisecond)
@@ -356,25 +380,38 @@ func main() {
 			continue
 		}
 
-		frameData := buffers[buf.index].start[:CapWidth*CapHeight] // First W*H bytes = Grayscale plane in NV12
+		frameData := buffers[dqbuf.index].start[:CapWidth*CapHeight]
 		frameIndex++
 
-		// Process every 2nd frame to save CPU (~15 fps processing rate)
-		if frameIndex%2 == 0 {
-			pose := classifyHandPose(frameData, CapWidth, CapHeight)
+		// Process every 3rd frame (~10 fps processing rate) to conserve CPU
+		if frameIndex%3 == 0 {
+			// Fast 8x spatial downsampling
+			idx := 0
+			for y := 0; y < CapHeight; y += 8 {
+				row := y * CapWidth
+				for x := 0; x < CapWidth; x += 8 {
+					subGray[idx] = frameData[row+x]
+					idx++
+				}
+			}
+
+			pose := classifyHandPose(subGray, subW, subH)
 
 			if pose == "V_SIGN" {
 				consecutiveV++
 				consecutiveOK = 0
 				consecutiveStp = 0
+				log.Println("[*] Detected potential ✌️ V-Sign...")
 			} else if pose == "OK_SIGN" {
 				consecutiveOK++
 				consecutiveV = 0
 				consecutiveStp = 0
+				log.Println("[*] Detected potential 👌 OK-Sign...")
 			} else if pose == "STOP_SIGN" {
 				consecutiveStp++
 				consecutiveV = 0
 				consecutiveOK = 0
+				log.Println("[*] Detected potential ✋ Stop-Sign...")
 			} else {
 				consecutiveV = 0
 				consecutiveOK = 0
@@ -387,20 +424,20 @@ func main() {
 					lastTrigger = time.Now()
 					consecutiveV = 0
 					consecutiveOK = 0
-					log.Printf("[+] GESTURE CONFIRMED: V / OK detected! Sending 'ready\\n' to host...")
-					go flashFeedbackBorder(0x07E0) // Green border
+					log.Printf("[+] GESTURE CONFIRMED: ✌️/👌 detected! Emitting 'ready'...")
+					go flashFeedbackBorder(0x07E0) // Emerald Green border flash
 					go sendGestureKey("ready")
 				} else if consecutiveStp >= 3 {
 					lastTrigger = time.Now()
 					consecutiveStp = 0
-					log.Printf("[+] GESTURE CONFIRMED: STOP detected! Sending 'Ctrl+C' to host...")
-					go flashFeedbackBorder(0xF800) // Red border
+					log.Printf("[+] GESTURE CONFIRMED: ✋ STOP detected! Emitting 'ctrl+c'...")
+					go flashFeedbackBorder(0xF800) // Crimson Red border flash
 					go sendGestureKey("ctrl+c")
 				}
 			}
 		}
 
 		// Re-queue buffer
-		syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_QBUF, uintptr(unsafe.Pointer(&buf)))
+		syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_QBUF, uintptr(unsafe.Pointer(&dqbuf)))
 	}
 }
