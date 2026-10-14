@@ -57,56 +57,34 @@
 - [x] 定位 CMOS 高清摄像头传感器（`/dev/video0`，标准 V4L2 架构）
 
 ### 阶段四：专属座舱多模态交互闭环（当前攻坚阶段）
-- [x] 编写并交叉编译 `touch_cockpit`（在 1600x600 屏幕右侧渲染 Action Bar，将汇顶 GT911 触摸事件映射为 `send_hid_key`，物理屏幕已成功点亮动作条）
+- [x] 编写并交叉编译 `touch_cockpit`（在 1600x600 屏幕右侧渲染 Action Bar，将汇顶 GT911 触摸事件映射为动作响应，物理屏幕已成功点亮动作条）
 - [x] 编写并交叉编译 `gesture_detector`（V4L2 多平面帧采集架构，160x120 极速降采样，✌️ V / 👌 OK / ✋ Stop 手势分类器）
 - [x] 查明全志 `sunxi-vin` 驱动规范（`V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE = 9`，传感器 `p1_mipi` 1280x720 30fps）
-- [x] 优化 `init_usb_monitor.sh` 规避 `setusbconfig` 提前绑定 UDC 缺陷，部署开机全量 3 合 1 外设与守护进程自启动
-- [ ] 软硬件端到端闭环验证：断电冷重启加载完整 USB HID 键盘，用户触摸屏幕或比划手势 -> 宿主机终端自动敲入 `ready\n`
+- [x] 查明 USB 未识别根因：原厂 4.9.191 内核未内建 `usb_f_hid` / `usb_f_ncm`，导致 ConfigFS 复合设备装载失败从而阻断了 UDC 绑定；同时早期脚本缺少 `/sbin/udevd`
+- [x] 深度重构 `init_usb_monitor.sh`：部署全量落盘日志（`boot_debug.log`, `dmesg_boot.log`），显式启动 `S10udev` 与 `S11dev`，回退至原厂验证的 `setusbconfig adb` 高速数据桥接方案
+- [x] 编写宿主机端零敲击伴侣守护脚本（`host_tools/cockpit_agent.py`），通过 ADB 桥接电容触控事件
+- [ ] 软硬件端到端闭环验证：用户将 SD 卡插回设备并连上 USB 开机，验证 ADB 自动重连与屏幕触控响应
 
 ---
 
 ## 4. 当前物理机运行与环境快照
 
-- **物理连接状态**：设备通过单根 USB Type-C 线缆连接至宿主机（`usb:5-2.1`），兼顾供电与 480Mbps 高速数据传输。
-- **启动引导源**：当前正从特制 MicroSD 卡引导运行专属 AI 座舱系统。
-- **屏幕显示状态**：1600x600 专属 AI 界面在物理屏幕上保持常驻显示。
-- **原厂进程隔离**：完全阻断（`rcS` 阻塞在 PID 729；原厂录像 `cdr` 与 `S70app` 永远不会启动）。
-- **设备端运行守护进程**：
-  - PID 1: `/sbin/init`
-  - PID 729: `{rcS} /bin/sh /etc/init.d/rcS boot`（挂起阻断状态）
-  - PID 845: `/bin/sh /mnt/sdcard/init_usb_monitor.sh`
-  - PID 894: `/bin/adbd -D`（ADB 守护进程在线）
-  - PID 905: `/mnt/sdcard/fb_receiver`（监听 `:5900` 端口）
-- **ADB 连通性**：正常识别（`adb devices -l` -> `20080411 device usb:5-2.1`）。
+- **物理连接状态**：MicroSD 卡已完成最新固件与日志脚本写入，已安全卸载（`sync && udisksctl unmount -b /dev/sdc1`），正等待用户插回 V553 行车记录仪开机。
+- **启动引导源**：即将从特制 MicroSD 卡重新引导。
+- **ADB 连通性**：后台监听守护已挂起就绪，开机后自动抓取设备。
 - **SD 卡已同步文件**：
-  - `/mnt/sdcard/init_usb_monitor.sh`（集成三合一复合外设与非交互式 adb shell 修复）
-  - `/mnt/sdcard/setup_gadget.sh`
+  - `/mnt/sdcard/init_usb_monitor.sh`（全量持久化日志 `boot_debug.log` + udev 守护启动 + 原厂 UDC 绑定）
+  - `/mnt/sdcard/touch_cockpit`（GT911 触控动作条）
+  - `/mnt/sdcard/gesture_detector`（视觉手势分类器）
   - `/mnt/sdcard/fb_receiver`（集成 `FBIOPAN_DISPLAY` 硬件翻页）
-  - `/mnt/sdcard/send_hid_key`
   - `/mnt/sdcard/show_splash`
   - `/mnt/sdcard/splash.raw`
 
 ---
 
-## 5. 明日上班交接与第一步即时行动
+## 5. 当前第一步即时行动
 
-明日开发会话启动时，AI 助手**必须严格按照以下三步无缝继续推进**：
+1. 用户将 MicroSD 卡拔出电脑读卡器，插回全志 V553 行车记录仪；
+2. 重新连接 USB Type-C 线缆接回电脑开机；
+3. 后台监听将自动捕获设备，输出启动日志并打通触控伴侣交互！
 
-1. **第一步：编写并部署 `touch_cockpit`（电容触控 Action Bar）**：
-   - 编写 `firmware/apps/touch_cockpit.go`：
-     - 读取 `/dev/input/event0`；
-     - 进行坐标空间旋转映射：$X_{screen} = Y_{raw}$, $Y_{screen} = 600 - X_{raw}$；
-     - 当触摸右侧动作区域（$X \ge 1200, Y \in [100, 350]$）时，触发 `/mnt/sdcard/send_hid_key "ready\n"`。
-   - 使用 Docker `golang:1.22` 交叉编译为 ARMv7 静态二进制（`firmware/bin/touch_cockpit`）。
-   - 推送至 `/mnt/sdcard/touch_cockpit` 并进行实机触摸按压测试。
-
-2. **第二步：编写并部署 `gesture_detector`（视觉多模态手势识别）**：
-   - 编写 `firmware/apps/gesture_detector.go`：
-     - 通过标准 V4L2 ioctl 打开 `/dev/video0`；
-     - 将 1080p 图像在内存中快速降采样至 160x120 灰度图；
-     - 识别 ✌️ 剪刀手（V-Sign）与 👌 OK 手势，加入时间防抖（连续 3 帧确认）；
-     - 确认手势后在屏幕闪烁绿色确认框，并调用 `/mnt/sdcard/send_hid_key "ready\n"`。
-   - 编译后推送到 SD 卡自启动。
-
-3. **第三步：端到端物理实机闭环验证**：
-   - 验证用户在座舱屏幕前比划 ✌️ 或 👌 手势时，宿主机终端自动收到 `"ready"` 并回车确认，彻底告别打字！

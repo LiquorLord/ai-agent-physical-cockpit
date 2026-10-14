@@ -57,47 +57,37 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 - [x] Identified CMOS camera sensor on `/dev/video0` (V4L2)
 
 ### Phase 4: Multimodal Cockpit Interaction (Current Phase)
-- [x] Implemented and cross-compiled `touch_cockpit` (Action Bar rendered on 1600x600 display, mapping Goodix GT911 touch events to `send_hid_key`)
+- [x] Implemented and cross-compiled `touch_cockpit` (Action Bar rendered on 1600x600 display, mapping Goodix GT911 touch events to action responses, physical Action Bar successfully rendered)
 - [x] Implemented and cross-compiled `gesture_detector` (V4L2 multi-planar frame grabber, 160x120 downsampler, ✌️ V / 👌 OK / ✋ Stop classifier)
 - [x] Identified Allwinner `sunxi-vin` driver architecture (`V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE = 9`, `p1_mipi` 1280x720 30fps sensor)
-- [x] Optimized `init_usb_monitor.sh` to prevent premature UDC binding and auto-launch all interaction daemons at boot
-- [ ] End-to-end multimodal physical verification: power cycle to bind USB HID keyboard -> user taps screen or gestures -> host terminal receives `ready\n`
+- [x] Uncovered USB detection root cause: Factory Linux 4.9.191 lacks `usb_f_hid` / `usb_f_ncm`, causing ConfigFS composite gadget failure which prevented UDC binding and D+ pullup activation; `/sbin/udevd` was also absent from early init
+- [x] Overhauled `init_usb_monitor.sh`: Deployed persistent file logging (`boot_debug.log`, `dmesg_boot.log`), explicitly launched `S10udev` and `S11dev`, reverted to factory-proven `setusbconfig adb` data bridge
+- [x] Created Host Companion Agent (`host_tools/cockpit_agent.py`) to bridge screen touch events to the host terminal over ADB
+- [ ] End-to-end multimodal physical verification: User inserts MicroSD card and plugs in USB to verify ADB reconnect and live touch action response
 
 ---
 
 ## 4. Current Hardware & Runtime State Snapshot
 
-- **Device Physical Status**: Powered on via single USB Type-C cable connected to host workstation (`usb:5-2.1`).
-- **Boot Source**: Booted from custom MicroSD card.
-- **Screen Display**: 1600x600 custom bootsplash is actively locked on screen.
-- **Factory Applications**: Completely isolated (`rcS` held at PID 729; factory `cdr` and `S70app` NEVER executed).
-- **Active Daemons on Target**:
-  - PID 1: `/sbin/init`
-  - PID 729: `{rcS} /bin/sh /etc/init.d/rcS boot` (blocked supervisor)
-  - PID 845: `/bin/sh /mnt/sdcard/init_usb_monitor.sh`
-  - PID 894: `/bin/adbd -D` (ADB active)
-  - PID 905: `/mnt/sdcard/fb_receiver` (Listening on `:5900`)
-- **ADB Connectivity**: Active (`adb devices -l` -> `20080411 device usb:5-2.1`).
+- **Device Physical Status**: MicroSD card updated with new boot engine & diagnostic logs, safely unmounted (`sync && udisksctl unmount -b /dev/sdc1`), waiting for user to insert into V553 dashcam.
+- **Boot Source**: About to boot from custom MicroSD card.
+- **ADB Connectivity**: Host background listener active, waiting for device attachment.
 - **Synchronized SD Card Files**:
-  - `/mnt/sdcard/init_usb_monitor.sh` (Updated with 3-in-1 Composite Gadget & non-interactive adb shell fix)
-  - `/mnt/sdcard/setup_gadget.sh`
-  - `/mnt/sdcard/fb_receiver` (Updated with `FBIOPAN_DISPLAY`)
-  - `/mnt/sdcard/send_hid_key`
+  - `/mnt/sdcard/init_usb_monitor.sh` (Persistent `boot_debug.log` + udev daemons + factory UDC bind)
+  - `/mnt/sdcard/touch_cockpit` (GT911 Action Bar controller)
+  - `/mnt/sdcard/gesture_detector` (Visual gesture classifier)
+  - `/mnt/sdcard/fb_receiver` (DE2.0 `FBIOPAN_DISPLAY` frame receiver)
   - `/mnt/sdcard/show_splash`
   - `/mnt/sdcard/splash.raw`
 
 ---
 
-## 5. Handover & Tomorrow's Immediate Next Steps
+## 5. Immediate Next Steps
 
-When resuming development in the next session, the assistant MUST execute in this exact sequence:
+1. User removes MicroSD card from PC reader and inserts it into Allwinner V553 dashcam;
+2. Reconnect USB Type-C cable to host PC to power on;
+3. Host background listener will automatically detect device, stream boot logs, and verify touch interactions!
 
-1. **Step 1: Build & Deploy `touch_cockpit`**:
-   - Write `firmware/apps/touch_cockpit.go`:
-     - Reads `/dev/input/event0`.
-     - Normalizes touch coordinates: $X_{screen} = Y_{raw}$, $Y_{screen} = 600 - X_{raw}$.
-     - When tapping right-side touch area ($X \ge 1200$, $Y \in [100, 350]$), executes `/mnt/sdcard/send_hid_key "ready\n"`.
-   - Cross-compile with Docker `golang:1.22` for ARMv7 (`firmware/bin/touch_cockpit`).
    - Push to `/mnt/sdcard/touch_cockpit` and test physical touch tap.
 
 2. **Step 2: Build & Deploy `gesture_detector`**:
