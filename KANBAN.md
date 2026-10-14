@@ -69,7 +69,8 @@ Transform an off-the-shelf $40 Allwinner V553 (`sun8iw21`) dashcam (board `f900x
 - [x] Upgraded `gesture_detector` with YCbCr skin segmentation & morphological finger peak analysis: 100% eliminated background noise false triggers while consuming <0.1% CPU (90.9% system idle)
 - [x] Implemented synchronized full-screen visual feedback: Inter-process UDP bridge between `gesture_detector` and `touch_cockpit` (`127.0.0.1:8889`) flashes a 24px wide glowing Emerald Green border around all four screen edges and highlights the `[PROCEED / READY]` button for 300ms on gesture recognition
 - [x] Optimized gesture detection responsiveness: Unified ✌️ and 👌 into single confirm counter with soft decay, lowered latency to ~160ms (2 frames @ 12.5 fps)
-- [ ] User presents ✌️ (V-sign) or 👌 (OK gesture) to the user-facing camera lens to verify live 24px green feedback border glow and `"ready\n"` injection
+- [x] Implemented Closed Fist ✊ (握拳) for STOP / ABORT: Utilized zero-finger compactness & aspect ratio ($0.65 \le W/H \le 1.35$) for maximum topological separation against ✌️/👌, triggering 24px Crimson Red border glow, `[STOP / ABORT]` highlight, and `ctrl+c`
+- [ ] User presents ✊ (Closed Fist) to camera to verify Crimson Red border glow & `ctrl+c`, and ✌️/👌 to verify Emerald Green glow & `"ready"`
 - [ ] Initiate host screen streaming verification (`host_tools/stream_to_monitor.py` targeting 1600x600 framebuffer)
 
 ---

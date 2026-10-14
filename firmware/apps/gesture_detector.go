@@ -167,7 +167,7 @@ func isSkin(y, u, v byte) bool {
 	return v >= 133 && v <= 175 && u >= 80 && u <= 130 && y >= 40
 }
 
-// Lightweight hand gesture classifier based on YCbCr skin segmentation & morphological finger peaks
+// Lightweight hand gesture classifier based on YCbCr skin segmentation & morphology
 func classifyHandPose(skinGrid []bool, w, h int) string {
 	cropX1 := w / 5
 	cropX2 := 4 * w / 5
@@ -175,6 +175,8 @@ func classifyHandPose(skinGrid []bool, w, h int) string {
 	cropY2 := 4 * h / 5
 
 	skinCount := 0
+	minX, maxX := 999, -1
+	minY, maxY := 999, -1
 	fgColumns := make([]int, cropX2-cropX1)
 
 	for y := cropY1; y < cropY2; y++ {
@@ -183,14 +185,30 @@ func classifyHandPose(skinGrid []bool, w, h int) string {
 			if skinGrid[row+x] {
 				skinCount++
 				fgColumns[x-cropX1]++
+				if x < minX {
+					minX = x
+				}
+				if x > maxX {
+					maxX = x
+				}
+				if y < minY {
+					minY = y
+				}
+				if y > maxY {
+					maxY = y
+				}
 			}
 		}
 	}
 
-	// Hand must occupy significant foreground area (at least 500 pixels in 160x90 downsampled grid)
-	if skinCount < 500 {
+	// Hand must occupy significant foreground area (at least 380 pixels in 160x90 downsampled grid)
+	if skinCount < 380 {
 		return ""
 	}
+
+	handW := maxX - minX + 1
+	handH := maxY - minY + 1
+	aspectRatio := float64(handW) / float64(handH)
 
 	// Smooth column histogram with 3-tap moving average
 	smoothed := make([]int, len(fgColumns))
@@ -215,13 +233,20 @@ func classifyHandPose(skinGrid []bool, w, h int) string {
 		}
 	}
 
-	// Heuristic Decision Boundary
+	// 1. Closed Fist ✊ (STOP / ABORT):
+	// Compact blob, no finger peaks (peaks <= 1), roughly square/round (0.65 <= W/H <= 1.35)
+	if (peaks == 0 || peaks == 1) && aspectRatio >= 0.65 && aspectRatio <= 1.35 && handW >= 16 && handH >= 16 {
+		return "STOP_SIGN"
+	}
+
+	// 2. Affirmative Gestures (PROCEED / READY):
+	// V-Sign (2 peaks) or OK-Sign (3 peaks)
 	if peaks == 2 {
 		return "V_SIGN"
 	} else if peaks == 3 {
 		return "OK_SIGN"
 	} else if peaks >= 4 {
-		return "STOP_SIGN"
+		return "STOP_SIGN" // Fallback: also accept 5-finger spread hand
 	}
 
 	return ""
