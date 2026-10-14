@@ -9,10 +9,14 @@ import (
 
 const (
 	VIDIOC_QUERYCAP = 0x80685600
-	VIDIOC_G_FMT    = 0xc0cc5604
-	VIDIOC_S_FMT    = 0xc0cc5605
-	VIDIOC_REQBUFS  = 0xc0145608
-	VIDIOC_QUERYBUF = 0xc0445609
+	VIDIOC_G_FMT     = 0xc0cc5604
+	VIDIOC_S_FMT     = 0xc0cc5605
+	VIDIOC_REQBUFS   = 0xc0145608
+	VIDIOC_QUERYBUF  = 0xc0445609
+	VIDIOC_QBUF      = 0xc044560f
+	VIDIOC_DQBUF     = 0xc0445611
+	VIDIOC_STREAMON  = 0x40045612
+	VIDIOC_STREAMOFF = 0x40045613
 
 	V4L2_BUF_TYPE_VIDEO_CAPTURE        = 1
 	V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE = 9
@@ -201,30 +205,32 @@ func main() {
 		}
 	}
 
-	// 2.5 Set Format (Type 9)
-	fmt.Println("[*] Setting format to 1280x720 NV12...")
+	// 2.5 Set Format (Type 9) to 1920x1080 NV12
+	capW := 1920
+	capH := 1080
+	fmt.Printf("[*] Setting format to %dx%d NV12...\n", capW, capH)
 	var sfmt v4l2_format_mp
 	sfmt.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
 	smp := (*v4l2_pix_format_mplane)(unsafe.Pointer(&sfmt.fmt[0]))
-	smp.width = 1280
-	smp.height = 720
+	smp.width = uint32(capW)
+	smp.height = uint32(capH)
 	smp.pixelformat = 0x3231564E // 'NV12'
-	smp.field = 1 // V4L2_FIELD_NONE
+	smp.field = 1                // V4L2_FIELD_NONE
 	smp.num_planes = 1
-	smp.plane_fmt[0].sizeimage = 1280 * 720 * 3 / 2
-	smp.plane_fmt[0].bytesperline = 1280
+	smp.plane_fmt[0].sizeimage = uint32(capW * capH * 3 / 2)
+	smp.plane_fmt[0].bytesperline = uint32(capW)
 
 	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_S_FMT, uintptr(unsafe.Pointer(&sfmt)))
 	if errno != 0 {
 		fmt.Printf("[-] VIDIOC_S_FMT (NV12) failed: %v\n", errno)
 	} else {
-		fmt.Printf("[+] VIDIOC_S_FMT (NV12) SUCCESS! Negotiated: %dx%d, fmt=%s, planes=%d\n",
-			smp.width, smp.height, fourccStr(smp.pixelformat), smp.num_planes)
+		fmt.Printf("[+] VIDIOC_S_FMT (NV12) SUCCESS! Negotiated: %dx%d, fmt=%s, planes=%d, size=%d\n",
+			smp.width, smp.height, fourccStr(smp.pixelformat), smp.num_planes, smp.plane_fmt[0].sizeimage)
 	}
 
 	// 3. Test REQBUFS (Type 9)
 	var req v4l2_requestbuffers
-	req.count = 2
+	req.count = 3
 	req.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
 	req.memory = V4L2_MEMORY_MMAP
 	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req)))
@@ -234,26 +240,78 @@ func main() {
 	}
 	fmt.Printf("[+] VIDIOC_REQBUFS (MPLANE) SUCCESS! count=%d\n", req.count)
 
-
-	// 4. Test QUERYBUF (Type 9)
-	var plane v4l2_plane
-	var qbuf v4l2_buffer_mp
-	qbuf.index = 0
-	qbuf.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
-	qbuf.memory = V4L2_MEMORY_MMAP
-	qbuf.planes = uintptr(unsafe.Pointer(&plane))
-	qbuf.length = 1
-
-	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&qbuf)))
-	if errno != 0 {
-		fmt.Printf("[-] VIDIOC_QUERYBUF failed: %v\n", errno)
-		return
+	type Buffer struct {
+		start  []byte
+		length int
 	}
-	fmt.Printf("[+] VIDIOC_QUERYBUF SUCCESS!\n")
-	fmt.Printf("    Buffer 0 Plane 0: length=%d, offset=0x%x\n", plane.length, plane.mem_offset)
+	buffers := make([]Buffer, req.count)
+	planes := make([]v4l2_plane, req.count)
+
+	// 4. Map & Queue all buffers
+	for i := uint32(0); i < req.count; i++ {
+		var qbuf v4l2_buffer_mp
+		qbuf.index = i
+		qbuf.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
+		qbuf.memory = V4L2_MEMORY_MMAP
+		qbuf.planes = uintptr(unsafe.Pointer(&planes[i]))
+		qbuf.length = 1
+
+		_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&qbuf)))
+		if errno != 0 {
+			fmt.Printf("[-] VIDIOC_QUERYBUF failed for %d: %v\n", i, errno)
+			return
+		}
+
+		mmap, err := syscall.Mmap(fd, int64(planes[i].mem_offset), int(planes[i].length), syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
+		if err != nil {
+			fmt.Printf("[-] Mmap failed for buf %d: %v\n", i, err)
+			return
+		}
+		buffers[i] = Buffer{start: mmap, length: int(planes[i].length)}
+		fmt.Printf("    Buffer %d Plane 0: length=%d, offset=0x%x\n", i, planes[i].length, planes[i].mem_offset)
+
+		_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_QBUF, uintptr(unsafe.Pointer(&qbuf)))
+		if errno != 0 {
+			fmt.Printf("[-] VIDIOC_QBUF failed for buf %d: %v\n", i, errno)
+			return
+		}
+	}
+
+	// 5. Stream on
+	streamType := uint32(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
+	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_STREAMON, uintptr(unsafe.Pointer(&streamType)))
+	if errno != 0 {
+		fmt.Printf("[-] VIDIOC_STREAMON failed: %v\n", errno)
+	} else {
+		fmt.Printf("[+] VIDIOC_STREAMON SUCCESS! Waiting for frame...\n")
+		var dqbuf v4l2_buffer_mp
+		var dqplane v4l2_plane
+		dqbuf.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
+		dqbuf.memory = V4L2_MEMORY_MMAP
+		dqbuf.planes = uintptr(unsafe.Pointer(&dqplane))
+		dqbuf.length = 1
+
+		_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_DQBUF, uintptr(unsafe.Pointer(&dqbuf)))
+		if errno != 0 {
+			fmt.Printf("[-] VIDIOC_DQBUF failed: %v\n", errno)
+		} else {
+			fmt.Printf("[+] Frame grabbed successfully! Index: %d, Bytes: %d\n", dqbuf.index, dqplane.bytesused)
+			outName := "/mnt/sdcard/capture_test.raw"
+			os.WriteFile(outName, buffers[dqbuf.index].start[:dqplane.bytesused], 0666)
+			fmt.Printf("[+] Saved captured frame to %s\n", outName)
+		}
+		syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&streamType)))
+	}
+
+	for _, b := range buffers {
+		if b.start != nil {
+			syscall.Munmap(b.start)
+		}
+	}
 
 	// Clean up REQBUFS
 	req.count = 0
 	syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req)))
 	fmt.Println("[+] Probe completed successfully!")
 }
+

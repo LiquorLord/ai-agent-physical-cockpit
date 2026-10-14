@@ -65,9 +65,10 @@
 - [x] 编写宿主机端零敲击伴侣守护脚本（`host_tools/cockpit_agent.py`），通过 ADB 桥接电容触控事件
 - [x] 软硬件端到端闭环验证：电容触控屏幕动作条与物理按压 100% 验证成功！绿色 `[PROCEED / READY]` 与红色 `[STOP / ABORT]` 按键高亮闪烁并成功输出指令事件到 `/tmp/cockpit_event.log`
 - [x] 联调 `gesture_detector`：全志 `sunxi-vin` 多平面（MPLANE 9）1280x720 NV12 @ 30fps 视频流完全打通，Cortex-A7 8 倍极速空间降采样与手势分类器在线运行！
-- [ ] 验证视觉手势识别：在摄像头前比划 ✌️（V-sign）或 👌（OK）手势，验证屏幕绿色边框闪烁反馈与指令上报
+- [x] 切换至朝向用户的副摄像头（`sensor@1` `tp9950`/`tp9951` @ `/dev/video8`）：成功抓取 1080p（1920x1080 NV12，对齐高度 1088）全画幅图像，确认座舱人脸视场清晰可用
+- [x] 升级 `gesture_detector` 融合 YCbCr 肤色分割与形态学指尖峰值分析：彻底消除背景纹理噪点误触发，同时 CPU 占用率 <0.1%（系统整体 Idle 90.9%）
+- [ ] 验证视觉手势识别：在朝向用户的摄像头前比划 ✌️（V-sign）或 👌（OK）手势，验证屏幕绿色边框闪烁反馈与 `ready\n` 指令注入
 - [ ] 启动宿主机投屏测试（运行 `host_tools/stream_to_monitor.py` 验证 1600x600 显存投屏）
-
 
 ---
 
@@ -76,12 +77,14 @@
 - **物理连接状态**：全志 V553（`sun8iw21`）行车记录仪通过单根 USB Type-C 连入宿主机（`usb:5-2.1` @ 480Mbps USB 2.0 High-Speed），供电与数据双向畅通。
 - **启动引导源**：从 MicroSD 卡特制 ext4 分区完全引导，原厂 `cdr` 录像进程被 100% 隔离阻断。
 - **屏幕显示与触控状态**：1600x600 专属 AI 界面在物理屏幕上保持锁定显示；右侧 Action Bar 触控按压高亮闪烁与事件上报已实机验证 100% 成功！
+- **面向用户摄像头**：Techpoint TP9950/TP9951 1080p 传感器挂载于 `/dev/video8`，正以 NV12 格式向 `gesture_detector` 稳定供流。
 - **ADB 连通性**：在线运行（`20080411 device usb:5-2.1`），非交互式 `adb shell` 畅通无阻。
 - **设备端运行守护进程**：
   - PID 1: `/sbin/init`
   - PID 845: `/bin/sh /mnt/sdcard/init_usb_monitor.sh`（监控死循环保护中）
   - PID 904: `/bin/adbd -D`（480Mbps 高速 ADB 通道）
-  - PID 933: `/mnt/sdcard/touch_cockpit`（汇顶 GT911 动作条交互服务）
+  - PID 1717: `/mnt/sdcard/touch_cockpit`（汇顶 GT911 动作条交互服务）
+  - PID 2317: `/mnt/sdcard/gesture_detector`（`/dev/video8` 视觉手势 AI 引擎）
   - PID 943: `/mnt/sdcard/fb_receiver`（监听 `:5900` 端口）
 - **宿主机端工具链**：
   - `host_tools/cockpit_agent.py`（ADB 触控事件捕获与终端零打字敲击伴侣）
@@ -91,8 +94,8 @@
 
 ## 5. 当前第一步即时行动
 
-1. 启动宿主机伴侣守护：`./host_tools/cockpit_agent.py`，实现屏幕点按即自动敲入 `ready\n` 零输入体验；
-2. 联调摄像头视觉手势分类器 `gesture_detector`，验证比划 ✌️ 或 👌 手势自动触发；
+1. 在朝向用户的副摄像头前比划 ✌️（V-sign）或 👌（OK）手势，验证绿色反馈边框闪烁与事件自动注入；
+2. 运行 `./host_tools/cockpit_agent.py` 实现全流程免键盘键入交互；
 3. 测试主机端到 10.26 英寸超宽屏的 1600x600 实时投屏显示。
 
 

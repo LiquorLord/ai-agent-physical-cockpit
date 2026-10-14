@@ -28,9 +28,6 @@ const (
 
 	V4L2_PIX_FMT_NV12 = 0x3231564E // 'NV12'
 
-	CapWidth  = 1280
-	CapHeight = 720
-
 	ScreenWidth  = 1600
 	ScreenHeight = 600
 
@@ -187,58 +184,50 @@ func sendGestureKey(action string) {
 	exec.Command("/mnt/sdcard/send_hid_key", action).Run()
 }
 
-// Lightweight hand gesture classifier based on morphological convexity & finger peaks
-func classifyHandPose(gray []byte, w, h int) string {
-	cropX1 := w / 4
-	cropX2 := 3 * w / 4
-	cropY1 := h / 4
-	cropY2 := 3 * h / 4
+func isSkin(y, u, v byte) bool {
+	return v >= 133 && v <= 175 && u >= 80 && u <= 130 && y >= 40
+}
 
-	// 1. Calculate average luminance in crop window
-	var sum int64
-	count := 0
-	for y := cropY1; y < cropY2; y += 2 {
+// Lightweight hand gesture classifier based on YCbCr skin segmentation & morphological finger peaks
+func classifyHandPose(skinGrid []bool, w, h int) string {
+	cropX1 := w / 5
+	cropX2 := 4 * w / 5
+	cropY1 := h / 5
+	cropY2 := 4 * h / 5
+
+	skinCount := 0
+	fgColumns := make([]int, cropX2-cropX1)
+
+	for y := cropY1; y < cropY2; y++ {
 		row := y * w
-		for x := cropX1; x < cropX2; x += 2 {
-			sum += int64(gray[row+x])
-			count++
-		}
-	}
-	if count == 0 {
-		return ""
-	}
-	avgLum := byte(sum / int64(count))
-
-	// Skip if too dark or too washed out
-	if avgLum < 20 || avgLum > 235 {
-		return ""
-	}
-
-	// 2. Count columns with vertical foreground extent (finger columns)
-	fgColumns := make([]int, (cropX2-cropX1)/2)
-	colIdx := 0
-	for x := cropX1; x < cropX2; x += 2 {
-		fgPixels := 0
-		for y := cropY1; y < cropY2; y += 2 {
-			val := gray[y*w+x]
-			diff := int(val) - int(avgLum)
-			if diff > 20 || diff < -20 {
-				fgPixels++
+		for x := cropX1; x < cropX2; x++ {
+			if skinGrid[row+x] {
+				skinCount++
+				fgColumns[x-cropX1]++
 			}
 		}
-		fgColumns[colIdx] = fgPixels
-		colIdx++
 	}
 
-	// 3. Count peaks in column profile
+	// Hand must occupy significant foreground area (at least 500 pixels in 160x90 downsampled grid)
+	if skinCount < 500 {
+		return ""
+	}
+
+	// Smooth column histogram with 3-tap moving average
+	smoothed := make([]int, len(fgColumns))
+	for i := 1; i < len(fgColumns)-1; i++ {
+		smoothed[i] = (fgColumns[i-1] + fgColumns[i] + fgColumns[i+1]) / 3
+	}
+
+	// Count finger peaks (local maxima above vertical threshold)
+	peakThresh := (cropY2 - cropY1) / 4 // at least 1/4 vertical extent
 	peaks := 0
 	inPeak := false
-	peakThreshold := (cropY2 - cropY1) / 5
 
-	for i := 1; i < len(fgColumns)-1; i++ {
-		val := fgColumns[i]
-		if val > peakThreshold {
-			if !inPeak && val > fgColumns[i-1] {
+	for i := 2; i < len(smoothed)-2; i++ {
+		val := smoothed[i]
+		if val > peakThresh {
+			if !inPeak && val > smoothed[i-1] && val >= smoothed[i+1] {
 				peaks++
 				inPeak = true
 			}
@@ -252,7 +241,7 @@ func classifyHandPose(gray []byte, w, h int) string {
 		return "V_SIGN"
 	} else if peaks == 3 {
 		return "OK_SIGN"
-	} else if peaks >= 4 && peaks <= 6 {
+	} else if peaks >= 4 {
 		return "STOP_SIGN"
 	}
 
@@ -260,41 +249,56 @@ func classifyHandPose(gray []byte, w, h int) string {
 }
 
 func main() {
-	log.Println("[gesture_detector] Starting AGY Visual Gesture Engine on /dev/video0...")
+	devPath := "/dev/video8"
+	if len(os.Args) > 1 {
+		devPath = os.Args[1]
+	}
+
+	capWidth := 1920
+	capHeight := 1080
+	dsStep := 12 // 1920 / 12 = 160, 1080 / 12 = 90
+
+	if devPath == "/dev/video0" {
+		capWidth = 1280
+		capHeight = 720
+		dsStep = 8 // 1280 / 8 = 160, 720 / 8 = 90
+	}
+
+	log.Printf("[gesture_detector] Starting AGY Visual Gesture Engine on %s (%dx%d)...", devPath, capWidth, capHeight)
 
 	var fd int
 	var err error
 
 	// Wait up to 10s for camera device
 	for i := 0; i < 5; i++ {
-		fd, err = syscall.Open("/dev/video0", syscall.O_RDWR, 0666)
+		fd, err = syscall.Open(devPath, syscall.O_RDWR, 0666)
 		if err == nil {
 			break
 		}
 		time.Sleep(1 * time.Second)
 	}
 	if err != nil {
-		log.Fatalf("[!] Failed to open /dev/video0: %v", err)
+		log.Fatalf("[!] Failed to open %s: %v", devPath, err)
 	}
 	defer syscall.Close(fd)
 
-	log.Println("[+] Successfully opened /dev/video0")
+	log.Printf("[+] Successfully opened %s", devPath)
 
 	// 1. Select Input 0
 	var input int32 = 0
 	syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), 0xc0045627, uintptr(unsafe.Pointer(&input)))
 
-	// 2. Set Video Format (1280x720 NV12 MPLANE)
+	// 2. Set Video Format (NV12 MPLANE)
 	var sfmt v4l2_format_mp
 	sfmt.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
 	smp := (*v4l2_pix_format_mplane)(unsafe.Pointer(&sfmt.fmt[0]))
-	smp.width = CapWidth
-	smp.height = CapHeight
+	smp.width = uint32(capWidth)
+	smp.height = uint32(capHeight)
 	smp.pixelformat = V4L2_PIX_FMT_NV12
 	smp.field = 1 // V4L2_FIELD_NONE
 	smp.num_planes = 1
-	smp.plane_fmt[0].sizeimage = CapWidth * CapHeight * 3 / 2
-	smp.plane_fmt[0].bytesperline = CapWidth
+	smp.plane_fmt[0].sizeimage = uint32(capWidth * capHeight * 3 / 2)
+	smp.plane_fmt[0].bytesperline = uint32(capWidth)
 
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_S_FMT, uintptr(unsafe.Pointer(&sfmt)))
 	if errno != 0 {
@@ -348,7 +352,7 @@ func main() {
 	}
 	defer syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&streamType)))
 
-	log.Println("[+] Camera stream active! Monitoring for ✌️ V / 👌 OK / ✋ Stop gestures...")
+	log.Printf("[+] User-facing camera stream active on %s! Monitoring for ✌️ V / 👌 OK / ✋ Stop gestures...", devPath)
 
 	var (
 		consecutiveV   = 0
@@ -358,9 +362,15 @@ func main() {
 	)
 
 	frameIndex := 0
-	subW := CapWidth / 8  // 160
-	subH := CapHeight / 8 // 90
-	subGray := make([]byte, subW*subH)
+	subW := capWidth / dsStep  // 160
+	subH := capHeight / dsStep // 90
+	subSkin := make([]bool, subW*subH)
+
+	alignedHeight := int(planes[0].length) * 2 / (capWidth * 3)
+	if alignedHeight < capHeight {
+		alignedHeight = capHeight
+	}
+	yPlaneSize := capWidth * alignedHeight
 
 	for {
 		var dqbuf v4l2_buffer_mp
@@ -380,22 +390,32 @@ func main() {
 			continue
 		}
 
-		frameData := buffers[dqbuf.index].start[:CapWidth*CapHeight]
+		frameData := buffers[dqbuf.index].start[:buffers[dqbuf.index].length]
 		frameIndex++
 
-		// Process every 3rd frame (~10 fps processing rate) to conserve CPU
+		// Process every 3rd frame (~8-10 fps processing rate) to conserve CPU
 		if frameIndex%3 == 0 {
-			// Fast 8x spatial downsampling
+			// Fast spatial downsampling with YCbCr skin detection
 			idx := 0
-			for y := 0; y < CapHeight; y += 8 {
-				row := y * CapWidth
-				for x := 0; x < CapWidth; x += 8 {
-					subGray[idx] = frameData[row+x]
-					idx++
+			for y := 0; y < capHeight; y += dsStep {
+				rowY := y * capWidth
+				uvRow := yPlaneSize + (y/2)*capWidth
+				for x := 0; x < capWidth; x += dsStep {
+					if idx < len(subSkin) {
+						yVal := frameData[rowY+x]
+						uvIdx := uvRow + (x/2)*2
+						var uVal, vVal byte = 128, 128
+						if uvIdx+1 < len(frameData) {
+							uVal = frameData[uvIdx]
+							vVal = frameData[uvIdx+1]
+						}
+						subSkin[idx] = isSkin(yVal, uVal, vVal)
+						idx++
+					}
 				}
 			}
 
-			pose := classifyHandPose(subGray, subW, subH)
+			pose := classifyHandPose(subSkin, subW, subH)
 
 			if pose == "V_SIGN" {
 				consecutiveV++
