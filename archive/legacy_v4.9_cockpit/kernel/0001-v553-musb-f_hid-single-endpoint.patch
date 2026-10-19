@@ -1,0 +1,71 @@
+diff --git a/drivers/usb/gadget/function/f_hid.c b/drivers/usb/gadget/function/f_hid.c
+index 8e83649f7..9d75f988f 100644
+--- a/drivers/usb/gadget/function/f_hid.c
++++ b/drivers/usb/gadget/function/f_hid.c
+@@ -198,6 +198,9 @@ static ssize_t f_hidg_read(struct file *file, char __user *buffer,
+ 	unsigned long flags;
+ 	int ret;
+ 
++	if (!hidg->out_ep)
++		return -EOPNOTSUPP;
++
+ 	if (!count)
+ 		return 0;
+ 
+@@ -547,8 +550,10 @@ static void hidg_disable(struct usb_function *f)
+ 	struct f_hidg_req_list *list, *next;
+ 	unsigned long flags;
+ 
+-	usb_ep_disable(hidg->in_ep);
+-	usb_ep_disable(hidg->out_ep);
++	if (hidg->in_ep)
++		usb_ep_disable(hidg->in_ep);
++	if (hidg->out_ep)
++		usb_ep_disable(hidg->out_ep);
+ 
+ 	spin_lock_irqsave(&hidg->read_spinlock, flags);
+ 	list_for_each_entry_safe(list, next, &hidg->completed_out_req, list) {
+@@ -707,17 +712,26 @@ static int hidg_bind(struct usb_configuration *c, struct usb_function *f)
+ 	hidg->in_ep = ep;
+ 
+ 	ep = usb_ep_autoconfig(c->cdev->gadget, &hidg_fs_out_ep_desc);
+-	if (!ep)
+-		goto fail;
+ 	hidg->out_ep = ep;
++	if (!ep) {
++		hidg_interface_desc.bNumEndpoints = 1;
++		hidg_fs_descriptors[3] = NULL;
++		hidg_hs_descriptors[3] = NULL;
++	} else {
++		hidg_interface_desc.bNumEndpoints = 2;
++		hidg_fs_descriptors[3] = (struct usb_descriptor_header *)&hidg_fs_out_ep_desc;
++		hidg_hs_descriptors[3] = (struct usb_descriptor_header *)&hidg_hs_out_ep_desc;
++	}
+ 
+ 	/* set descriptor dynamic values */
+ 	hidg_interface_desc.bInterfaceSubClass = hidg->bInterfaceSubClass;
+ 	hidg_interface_desc.bInterfaceProtocol = hidg->bInterfaceProtocol;
+ 	hidg_hs_in_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
+ 	hidg_fs_in_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
+-	hidg_hs_out_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
+-	hidg_fs_out_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
++	if (hidg->out_ep) {
++		hidg_hs_out_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
++		hidg_fs_out_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
++	}
+ 	/*
+ 	 * We can use hidg_desc struct here but we should not relay
+ 	 * that its content won't change after returning from this function.
+@@ -728,8 +742,10 @@ static int hidg_bind(struct usb_configuration *c, struct usb_function *f)
+ 
+ 	hidg_hs_in_ep_desc.bEndpointAddress =
+ 		hidg_fs_in_ep_desc.bEndpointAddress;
+-	hidg_hs_out_ep_desc.bEndpointAddress =
+-		hidg_fs_out_ep_desc.bEndpointAddress;
++	if (hidg->out_ep) {
++		hidg_hs_out_ep_desc.bEndpointAddress =
++			hidg_fs_out_ep_desc.bEndpointAddress;
++	}
+ 
+ 	status = usb_assign_descriptors(f, hidg_fs_descriptors,
+ 			hidg_hs_descriptors, NULL, NULL);

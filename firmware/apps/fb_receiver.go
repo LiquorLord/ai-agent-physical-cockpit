@@ -135,12 +135,18 @@ func (ds *DisplayServer) handleDualZoneStream(conn net.Conn) {
 			break
 		}
 
+		srcU16 := unsafe.Slice((*uint16)(unsafe.Pointer(&frameBuf[0])), len(frameBuf)/2)
+		fbU16 := unsafe.Slice((*uint16)(unsafe.Pointer(&ds.fbMem[0])), len(ds.fbMem)/2)
+
 		ds.mu.Lock()
-		// Row-by-row blitting into columns 0..1200 (preserving right 400 columns for Action Bar)
+		// Exact physical rotation mapping: fb[x*600 + (599 - y)] = src[y*1200 + x]
+		// Blits exclusively into columns 0..1199, leaving Action Bar (1200..1599) 100% untouched!
 		for y := 0; y < ScreenHeight; y++ {
-			destOffset := y * ScreenStride
-			srcOffset := y * DualZoneRowBytes
-			copy(ds.fbMem[destOffset:destOffset+DualZoneRowBytes], frameBuf[srcOffset:srcOffset+DualZoneRowBytes])
+			py := 599 - y
+			srcRow := y * DualZoneWidth
+			for x := 0; x < DualZoneWidth; x++ {
+				fbU16[x*600+py] = srcU16[srcRow+x]
+			}
 		}
 		ds.panDisplay()
 		ds.frameTotal++
@@ -177,8 +183,17 @@ func (ds *DisplayServer) handleFullScreenStream(conn net.Conn) {
 			break
 		}
 
+		srcU16 := unsafe.Slice((*uint16)(unsafe.Pointer(&frameBuf[0])), len(frameBuf)/2)
+		fbU16 := unsafe.Slice((*uint16)(unsafe.Pointer(&ds.fbMem[0])), len(ds.fbMem)/2)
+
 		ds.mu.Lock()
-		copy(ds.fbMem[0:FullFrameSize], frameBuf[0:FullFrameSize])
+		for y := 0; y < ScreenHeight; y++ {
+			py := 599 - y
+			srcRow := y * ScreenWidth
+			for x := 0; x < ScreenWidth; x++ {
+				fbU16[x*600+py] = srcU16[srcRow+x]
+			}
+		}
 		ds.panDisplay()
 		ds.frameTotal++
 		ds.mu.Unlock()

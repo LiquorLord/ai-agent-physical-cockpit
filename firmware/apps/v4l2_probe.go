@@ -17,6 +17,13 @@ const (
 	VIDIOC_DQBUF     = 0xc0445611
 	VIDIOC_STREAMON  = 0x40045612
 	VIDIOC_STREAMOFF = 0x40045613
+	VIDIOC_G_CTRL    = 0xc008561b
+	VIDIOC_S_CTRL    = 0xc008561c
+
+	V4L2_CID_EXPOSURE = 0x00980911
+	V4L2_CID_GAIN     = 0x00980913
+	V4L2_CID_HFLIP    = 0x00980914
+	V4L2_CID_VFLIP    = 0x00980915
 
 	V4L2_BUF_TYPE_VIDEO_CAPTURE        = 1
 	V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE = 9
@@ -63,6 +70,10 @@ type v4l2_format_mp struct {
 	fmt      [200]byte
 }
 
+type v4l2_control struct {
+	id    uint32
+	value int32
+}
 
 type v4l2_requestbuffers struct {
 	count    uint32
@@ -205,9 +216,9 @@ func main() {
 		}
 	}
 
-	// 2.5 Set Format (Type 9) to 1920x1080 NV12
-	capW := 1920
-	capH := 1080
+	// 2.5 Set Format (Type 9) to 1280x720 NV12
+	capW := 1280
+	capH := 720
 	fmt.Printf("[*] Setting format to %dx%d NV12...\n", capW, capH)
 	var sfmt v4l2_format_mp
 	sfmt.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
@@ -277,6 +288,44 @@ func main() {
 		}
 	}
 
+	// Query and optionally set Controls (Exposure, Gain)
+	var expCtrl v4l2_control
+	expCtrl.id = V4L2_CID_EXPOSURE
+	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_G_CTRL, uintptr(unsafe.Pointer(&expCtrl))); errno == 0 {
+		fmt.Printf("[+] Current Exposure: %d\n", expCtrl.value)
+	} else {
+		fmt.Printf("[-] VIDIOC_G_CTRL Exposure: %v\n", errno)
+	}
+
+	var gainCtrl v4l2_control
+	gainCtrl.id = V4L2_CID_GAIN
+	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_G_CTRL, uintptr(unsafe.Pointer(&gainCtrl))); errno == 0 {
+		fmt.Printf("[+] Current Gain: %d\n", gainCtrl.value)
+	} else {
+		fmt.Printf("[-] VIDIOC_G_CTRL Gain: %v\n", errno)
+	}
+
+	if len(os.Args) >= 3 {
+		var newExp int
+		fmt.Sscanf(os.Args[2], "%d", &newExp)
+		expCtrl.value = int32(newExp)
+		if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_S_CTRL, uintptr(unsafe.Pointer(&expCtrl))); errno == 0 {
+			fmt.Printf("[+] Set Exposure to %d SUCCESS!\n", newExp)
+		} else {
+			fmt.Printf("[-] Set Exposure failed: %v\n", errno)
+		}
+	}
+	if len(os.Args) >= 4 {
+		var newGain int
+		fmt.Sscanf(os.Args[3], "%d", &newGain)
+		gainCtrl.value = int32(newGain)
+		if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_S_CTRL, uintptr(unsafe.Pointer(&gainCtrl))); errno == 0 {
+			fmt.Printf("[+] Set Gain to %d SUCCESS!\n", newGain)
+		} else {
+			fmt.Printf("[-] Set Gain failed: %v\n", errno)
+		}
+	}
+
 	// 5. Stream on
 	streamType := uint32(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
 	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_STREAMON, uintptr(unsafe.Pointer(&streamType)))
@@ -291,14 +340,19 @@ func main() {
 		dqbuf.planes = uintptr(unsafe.Pointer(&dqplane))
 		dqbuf.length = 1
 
-		_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_DQBUF, uintptr(unsafe.Pointer(&dqbuf)))
-		if errno != 0 {
-			fmt.Printf("[-] VIDIOC_DQBUF failed: %v\n", errno)
-		} else {
-			fmt.Printf("[+] Frame grabbed successfully! Index: %d, Bytes: %d\n", dqbuf.index, dqplane.bytesused)
-			outName := "/mnt/sdcard/capture_test.raw"
-			os.WriteFile(outName, buffers[dqbuf.index].start[:dqplane.bytesused], 0666)
-			fmt.Printf("[+] Saved captured frame to %s\n", outName)
+		for frame := 0; frame < 10; frame++ {
+			_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_DQBUF, uintptr(unsafe.Pointer(&dqbuf)))
+			if errno != 0 {
+				fmt.Printf("[-] VIDIOC_DQBUF failed on frame %d: %v\n", frame, errno)
+				break
+			}
+			fmt.Printf("[+] Frame %d grabbed! Bytes: %d\n", frame, dqplane.bytesused)
+			if frame == 9 {
+				outName := "/tmp/capture_test.raw"
+				os.WriteFile(outName, buffers[dqbuf.index].start[:dqplane.bytesused], 0666)
+				fmt.Printf("[+] Saved settled frame %d to %s\n", frame, outName)
+			}
+			syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_QBUF, uintptr(unsafe.Pointer(&dqbuf)))
 		}
 		syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), VIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&streamType)))
 	}

@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"os/signal"
 	"strings"
 	"sync"
@@ -143,17 +142,34 @@ func NewCockpitUI() (*CockpitUI, error) {
 	return ui, nil
 }
 
+func (ui *CockpitUI) DrawPixel(x, y int, color uint16) {
+	if x < 0 || x >= ScreenWidth || y < 0 || y >= ScreenHeight {
+		return
+	}
+	// Physical FB is 600x1600:
+	// px = 599 - y (0..599)
+	// py = x       (0..1599)
+	// fb_index = py * 600 + px
+	ui.fbMem[x*600+(599-y)] = color
+}
+
+func (ui *CockpitUI) Clear(color uint16) {
+	for i := range ui.fbMem {
+		ui.fbMem[i] = color
+	}
+}
+
 func (ui *CockpitUI) DrawRect(x, y, w, h int, color uint16) {
-	for r := y; r < y+h && r < ScreenHeight; r++ {
-		if r < 0 {
+	for cy := y; cy < y+h && cy < ScreenHeight; cy++ {
+		if cy < 0 {
 			continue
 		}
-		rowStart := r * ScreenWidth
-		for c := x; c < x+w && c < ScreenWidth; c++ {
-			if c < 0 {
+		px := 599 - cy
+		for cx := x; cx < x+w && cx < ScreenWidth; cx++ {
+			if cx < 0 {
 				continue
 			}
-			ui.fbMem[rowStart+c] = color
+			ui.fbMem[cx*600+px] = color
 		}
 	}
 }
@@ -438,56 +454,113 @@ func (ui *CockpitUI) StartTelemetryCollector() {
 	}()
 }
 
+func injectHidKeys(hid *os.File, keys []byte) {
+	for _, k := range keys {
+		press := []byte{0, 0, k, 0, 0, 0, 0, 0}
+		release := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+		hid.Write(press)
+		time.Sleep(12 * time.Millisecond)
+		hid.Write(release)
+		time.Sleep(12 * time.Millisecond)
+	}
+}
+
+func injectHidCombo(hid *os.File, mod byte, key byte) {
+	press := []byte{mod, 0, key, 0, 0, 0, 0, 0}
+	release := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	hid.Write(press)
+	time.Sleep(15 * time.Millisecond)
+	hid.Write(release)
+	time.Sleep(15 * time.Millisecond)
+}
+
 func sendKeystroke(action string) {
 	log.Printf("[touch_cockpit] Triggering Action: %s", action)
 
-	// Append to /tmp/cockpit_event.log for host companion monitoring
+	// 1. Append to /tmp/cockpit_event.log for host companion monitoring
 	if f, err := os.OpenFile("/tmp/cockpit_event.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666); err == nil {
 		fmt.Fprintf(f, "%s\n", action)
 		f.Close()
 	}
 
-	// Direct attempt via /dev/hidg0
-	hid, err := os.OpenFile("/dev/hidg0", os.O_WRONLY, 0666)
-	if err == nil {
-		defer hid.Close()
-		switch action {
-		case "ready":
-			keys := []byte{0x15, 0x08, 0x04, 0x07, 0x1c, 0x28} // ready\n
-			for _, k := range keys {
-				press := []byte{0, 0, k, 0, 0, 0, 0, 0}
-				release := []byte{0, 0, 0, 0, 0, 0, 0, 0}
-				hid.Write(press)
-				time.Sleep(15 * time.Millisecond)
-				hid.Write(release)
-				time.Sleep(15 * time.Millisecond)
-			}
-			return
-		case "ctrl+c":
-			press := []byte{0x01, 0, 0x06, 0, 0, 0, 0, 0} // LeftCtrl + c
-			release := []byte{0, 0, 0, 0, 0, 0, 0, 0}
-			hid.Write(press)
-			time.Sleep(20 * time.Millisecond)
-			hid.Write(release)
+	// 2. Direct high-speed UDP transmission to Host Companion Agent at 192.168.100.2:8888
+	go func() {
+		raddr, err := net.ResolveUDPAddr("udp", "192.168.100.2:8888")
+		if err != nil {
 			return
 		}
-	}
+		conn, err := net.DialUDP("udp", nil, raddr)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		conn.Write([]byte(action + "\n"))
+	}()
 
-	// Fallback to /mnt/sdcard/send_hid_key executable
-	cmd := exec.Command("/mnt/sdcard/send_hid_key", action)
-	if err := cmd.Run(); err != nil {
-		log.Printf("[-] send_hid_key execution failed: %v", err)
+	// 3. Direct hardware keystroke injection via USB HID Keyboard (/dev/hidg0)
+	hid, err := os.OpenFile("/dev/hidg0", os.O_WRONLY, 0666)
+	if err != nil {
+		log.Printf("[-] /dev/hidg0 open error: %v", err)
+		return
 	}
+	defer hid.Close()
+
+	log.Printf("[+] Sending USB HID hardware scancodes for [%s]...", action)
+	switch action {
+	case "ready", "proceed":
+		injectHidKeys(hid, []byte{0x13, 0x15, 0x12, 0x06, 0x08, 0x08, 0x07, 0x28}) // proceed\n
+	case "grill-me", "grill":
+		injectHidKeys(hid, []byte{0x38, 0x0A, 0x15, 0x0C, 0x0F, 0x0F, 0x2D, 0x10, 0x08, 0x28}) // /grill-me\n
+	case "plan":
+		injectHidKeys(hid, []byte{0x38, 0x13, 0x0F, 0x04, 0x11, 0x28}) // /plan\n
+	case "ctrl+c", "stop":
+		injectHidCombo(hid, 0x01, 0x06) // LeftCtrl + c
+	default:
+		log.Printf("[!] Unknown HID action: %s", action)
+	}
+}
+
+func findTouchDevice() string {
+	for i := 0; i < 5; i++ {
+		devPath := fmt.Sprintf("/dev/input/event%d", i)
+		namePath := fmt.Sprintf("/sys/class/input/event%d/device/name", i)
+		if data, err := os.ReadFile(namePath); err == nil {
+			name := strings.ToLower(string(data))
+			log.Printf("[touch_cockpit] Found input event%d: %s", i, strings.TrimSpace(name))
+			if strings.Contains(name, "goodix") || strings.Contains(name, "gt9") || strings.Contains(name, "touch") || strings.Contains(name, "ctp") {
+				log.Printf("[touch_cockpit] Auto-selected touch device: %s (%s)", devPath, strings.TrimSpace(name))
+				return devPath
+			}
+		}
+	}
+	log.Println("[touch_cockpit] Defaulting to /dev/input/event0")
+	return "/dev/input/event0"
 }
 
 func main() {
 	signal.Ignore(syscall.SIGHUP)
-	log.Println("[touch_cockpit] Initializing AGY Touch Controller on /dev/input/event0...")
+
+	// Route logs to console and logfile for real-time serial observability
+	logWriters := []io.Writer{os.Stderr}
+	if f, err := os.OpenFile("/tmp/touch_cockpit.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666); err == nil {
+		logWriters = append(logWriters, f)
+	}
+	if c, err := os.OpenFile("/dev/console", os.O_WRONLY, 0); err == nil {
+		logWriters = append(logWriters, c)
+	}
+	log.SetOutput(io.MultiWriter(logWriters...))
+
+	log.Println("[touch_cockpit] Initializing AGY Touch Controller...")
 
 	ui, err := NewCockpitUI()
 	if err != nil {
 		log.Printf("[!] UI init warning: %v (continuing touch event loop)", err)
 	} else {
+		ui.mu.Lock()
+		ui.Clear(ColorBlack)
+		ui.DrawText(60, 260, "ANTIGRAVITY MULTIMODAL AI PHYSICAL COCKPIT", 3, ColorCyan)
+		ui.DrawText(60, 310, "STATUS: STANDBY • WAITING FOR HOST STREAM OR ADB COMMAND", 2, ColorGreenLight)
+		ui.mu.Unlock()
 		ui.RenderActionBar(0)
 		ui.StartTelemetryCollector()
 		log.Println("[+] Action Bar HUD & Telemetry Collector active")
@@ -519,18 +592,19 @@ func main() {
 		}
 	}()
 
-	evFile, err := os.Open("/dev/input/event0")
+	touchDev := findTouchDevice()
+	evFile, err := os.Open(touchDev)
 	if err != nil {
-		log.Fatalf("[!] Failed to open /dev/input/event0: %v", err)
+		log.Fatalf("[!] Failed to open touch device %s: %v", touchDev, err)
 	}
 	defer evFile.Close()
 
 	var (
-		rawX       int32 = 0
-		rawY       int32 = 0
-		pressure   int32 = 1
-		hasCoord         = false
-		lastAction time.Time
+		rawX            int32 = 0
+		rawY            int32 = 0
+		fingerDown      bool  = false
+		actionTriggered bool  = false
+		lastTriggerTime time.Time
 	)
 
 	buf := make([]byte, 16)
@@ -551,80 +625,65 @@ func main() {
 			switch ev.Code {
 			case ABS_MT_POSITION_X, ABS_X:
 				rawX = ev.Value
-				hasCoord = true
-				pressure = 1
 			case ABS_MT_POSITION_Y, ABS_Y:
 				rawY = ev.Value
-				hasCoord = true
-				pressure = 1
 			case ABS_MT_PRESSURE:
-				pressure = ev.Value
-				if pressure > 0 {
-					hasCoord = true
+				if ev.Value > 0 {
+					fingerDown = true
+				} else {
+					fingerDown = false
 				}
 			case ABS_MT_TRACKING_ID:
 				if ev.Value == -1 {
-					pressure = 0
-					hasCoord = false
+					fingerDown = false
 				} else {
-					pressure = 1
+					fingerDown = true
 				}
 			}
 		} else if ev.Type == EV_KEY && ev.Code == BTN_TOUCH {
 			if ev.Value == 1 {
-				pressure = 1
+				fingerDown = true
 			} else {
-				pressure = 0
-				hasCoord = false
+				fingerDown = false
 			}
 		} else if ev.Type == EV_SYN {
-			if ev.Code == SYN_REPORT || ev.Code == SYN_MT_REPORT {
-				if hasCoord && pressure > 0 {
+			if ev.Code == SYN_REPORT {
+				if fingerDown {
 					screenX := int(rawX)
 					screenY := int(rawY)
 
-					log.Printf("[TOUCH] Detected at Screen(%d, %d)", screenX, screenY)
-
-					if time.Since(lastAction) >= 350*time.Millisecond {
-						if screenX >= 1200 {
-							if screenY >= 40 && screenY < 160 {
-								// Button 1: [PROCEED]
-								lastAction = time.Now()
-								log.Printf("[HIT] Button 1 [PROCEED] Hit at (%d, %d)", screenX, screenY)
-								if ui != nil {
-									ui.FlashFeedback("proceed")
-								}
-								go sendKeystroke("proceed")
-							} else if screenY >= 160 && screenY < 280 {
-								// Button 2: [GRILL-ME]
-								lastAction = time.Now()
-								log.Printf("[HIT] Button 2 [GRILL-ME] Hit at (%d, %d)", screenX, screenY)
-								if ui != nil {
-									ui.FlashFeedback("grill-me")
-								}
-								go sendKeystroke("grill-me")
-							} else if screenY >= 280 && screenY < 400 {
-								// Button 3: [PLAN]
-								lastAction = time.Now()
-								log.Printf("[HIT] Button 3 [PLAN] Hit at (%d, %d)", screenX, screenY)
-								if ui != nil {
-									ui.FlashFeedback("plan")
-								}
-								go sendKeystroke("plan")
-							} else if screenY >= 400 && screenY <= 525 {
-								// Button 4: [STOP / ABORT]
-								lastAction = time.Now()
-								log.Printf("[HIT] Button 4 [STOP / ABORT] Hit at (%d, %d)", screenX, screenY)
-								if ui != nil {
-									ui.FlashFeedback("ctrl+c")
-								}
-								go sendKeystroke("ctrl+c")
-							}
+					if screenX >= 1150 {
+						btn := 0
+						var actionName string
+						if screenY >= 35 && screenY < 160 {
+							btn = 1
+							actionName = "proceed"
+						} else if screenY >= 160 && screenY < 280 {
+							btn = 2
+							actionName = "grill-me"
+						} else if screenY >= 280 && screenY < 400 {
+							btn = 3
+							actionName = "plan"
+						} else if screenY >= 400 && screenY <= 540 {
+							btn = 4
+							actionName = "ctrl+c"
 						}
+
+						if btn > 0 && !actionTriggered && time.Since(lastTriggerTime) >= 1500*time.Millisecond {
+							actionTriggered = true
+							lastTriggerTime = time.Now()
+							log.Printf("[HIT] Button %d [%s] triggered cleanly at (%d, %d)", btn, actionName, screenX, screenY)
+							if ui != nil {
+								ui.FlashFeedback(actionName)
+							}
+							go sendKeystroke(actionName)
+						}
+					} else {
+						log.Printf("[TOUCH] Main viewport touch at (%d, %d)", screenX, screenY)
 					}
-				}
-				if pressure == 0 {
-					hasCoord = false
+				} else {
+					// Finger released: reset trigger lock
+					actionTriggered = false
 				}
 			}
 		}

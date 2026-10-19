@@ -33,16 +33,19 @@ def log(msg):
     timestamp = time.strftime("%H:%M:%S")
     print(f"\r\033[K[{timestamp}] [CockpitAgent] {msg}", flush=True)
 
-def check_adb():
-    """Verify ADB connection to the dashcam device / 验证设备 ADB 连接"""
+def check_connection():
+    """Verify connection to V553 dashcam (USB IP or ADB)"""
+    res = subprocess.run(["ping", "-c", "1", "-W", "1", "192.168.100.1"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if res.returncode == 0:
+        log("[*] V553 High-Speed USB link active (192.168.100.1)")
+        return True
     res = subprocess.run(["adb", "devices"], capture_output=True, text=True)
     lines = [line for line in res.stdout.strip().split("\n") if "\tdevice" in line]
-    if not lines:
-        log("[!] No ADB device detected. Waiting for device...")
-        return False
-    serial = lines[0].split("\t")[0]
-    log(f"[*] Target device connected: {serial}")
-    return True
+    if lines:
+        log(f"[*] Target device connected via ADB: {lines[0].split('\t')[0]}")
+        return True
+    log("[!] Waiting for V553 USB connection...")
+    return False
 
 def sync_terminal_window_size(master_fd):
     """Propagate terminal window size to pseudo-terminal / 同步终端窗口行列尺寸"""
@@ -52,64 +55,85 @@ def sync_terminal_window_size(master_fd):
     except Exception:
         pass
 
-def event_listener_thread(master_fd=None, stop_event=None):
+LAST_ACTION_TIMES = {}
+DEBOUNCE_SEC = 1.2
+
+def handle_action(action, master_fd=None):
+    global LAST_ACTION_TIMES
+    action = action.strip().lower()
+    if not action:
+        return
+    
+    # Normalize key for debouncing
+    key = "proceed" if ("proceed" in action or "ready" in action) else \
+          "grill" if "grill" in action else \
+          "plan" if "plan" in action else \
+          "stop" if ("ctrl+c" in action or "stop" in action) else action
+
+    now = time.time()
+    last_time = LAST_ACTION_TIMES.get(key, 0)
+    if (now - last_time) < DEBOUNCE_SEC:
+        log(f"⚠️ Debounced duplicate [{key}] touch event ({now - last_time:.2f}s < {DEBOUNCE_SEC}s)")
+        return
+    LAST_ACTION_TIMES[key] = now
+
+    if "proceed" in action or "ready" in action:
+        log("🟢 Physical Touch: [PROCEED] pressed! -> Injecting 'proceed\\n'")
+        if master_fd is not None:
+            try:
+                os.write(master_fd, b"proceed\n")
+            except OSError:
+                pass
+    elif "grill" in action:
+        log("🔵 Physical Touch: [GRILL-ME] pressed! -> Injecting '/grill-me\\n'")
+        if master_fd is not None:
+            try:
+                os.write(master_fd, b"/grill-me\n")
+            except OSError:
+                pass
+    elif "plan" in action:
+        log("🟣 Physical Touch: [PLAN] pressed! -> Injecting '/plan\\n'")
+        if master_fd is not None:
+            try:
+                os.write(master_fd, b"/plan\n")
+            except OSError:
+                pass
+    elif "ctrl+c" in action or "stop" in action:
+        log("🔴 Physical Touch: [STOP / ABORT] pressed! -> Injecting Ctrl+C (\\x03)")
+        if master_fd is not None:
+            try:
+                os.write(master_fd, b"\x03")
+            except OSError:
+                pass
+    else:
+        log(f"⚡ Hardware Event: {action}")
+
+def udp_listener_thread(master_fd=None, stop_event=None):
     """
-    Background thread that tails /tmp/cockpit_event.log over High-Speed ADB
-    后台线程：实时追踪 Allwinner V553 触摸屏事件并无锁注入 PTY
+    High-Speed UDP listener on 0.0.0.0:8888
+    Receives instantaneous touch button events from V553 over USB CDC-NCM
     """
+    import socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.bind(("0.0.0.0", 8888))
+    except Exception as e:
+        log(f"[-] UDP bind failed: {e}")
+        return
+    sock.settimeout(0.5)
+    log("[*] UDP Hardware Listener active on port 8888 (USB High-Speed)")
+
     while not stop_event.is_set():
         try:
-            # Wait for device if disconnected
-            subprocess.run(["adb", "wait-for-device"])
-            cmd = ["adb", "shell", "tail -n 0 -F /tmp/cockpit_event.log 2>/dev/null"]
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
-
-            while not stop_event.is_set():
-                line = proc.stdout.readline()
-                if not line:
-                    break
-                action = line.strip().lower()
-                if not action:
-                    continue
-
-                if "proceed" in action or "ready" in action:
-                    log("🟢 Physical Touch: [PROCEED] pressed! -> Injecting 'proceed\\n'")
-                    if master_fd is not None:
-                        try:
-                            os.write(master_fd, b"proceed\n")
-                        except OSError:
-                            break
-                elif "grill" in action:
-                    log("🔵 Physical Touch: [GRILL-ME] pressed! -> Injecting '/grill-me\\n'")
-                    if master_fd is not None:
-                        try:
-                            os.write(master_fd, b"/grill-me\n")
-                        except OSError:
-                            break
-                elif "plan" in action:
-                    log("🟣 Physical Touch: [PLAN] pressed! -> Injecting '/plan\\n'")
-                    if master_fd is not None:
-                        try:
-                            os.write(master_fd, b"/plan\n")
-                        except OSError:
-                            break
-                elif "ctrl+c" in action or "stop" in action:
-                    log("🔴 Physical Touch: [STOP / ABORT] pressed! -> Injecting Ctrl+C (\\x03)")
-                    if master_fd is not None:
-                        try:
-                            os.write(master_fd, b"\x03")
-                        except OSError:
-                            break
-                else:
-                    log(f"⚡ Hardware Event: {action}")
-
-            proc.terminate()
-            proc.wait()
-        except Exception as e:
+            data, addr = sock.recvfrom(256)
+            handle_action(data.decode("utf-8", errors="ignore"), master_fd)
+        except socket.timeout:
+            continue
+        except Exception:
             if stop_event.is_set():
                 break
-            log(f"ADB listener error: {e}, reconnecting in 2s...")
-            time.sleep(2)
+    sock.close()
 
 def run_pty_session(cmd):
     """
@@ -143,6 +167,8 @@ def run_pty_session(cmd):
         os.dup2(slave_fd, 2)
         if slave_fd > 2:
             os.close(slave_fd)
+        # Ensure child process does not inherit parent's TMUX variable
+        os.environ.pop("TMUX", None)
         try:
             os.execvp(cmd[0], cmd)
         except Exception as e:
@@ -165,8 +191,8 @@ def run_pty_session(cmd):
             pass
 
     stop_event = threading.Event()
-    listener = threading.Thread(target=event_listener_thread, args=(master_fd, stop_event), daemon=True)
-    listener.start()
+    t_udp = threading.Thread(target=udp_listener_thread, args=(master_fd, stop_event), daemon=True)
+    t_udp.start()
 
     if is_tty:
         tty.setraw(sys.stdin.fileno())
@@ -215,11 +241,14 @@ def run_monitor_mode():
     """Passive monitoring mode / 被动监听模式"""
     print("=" * 60)
     print("  AGY Physical Cockpit - Hardware Monitor Mode")
-    print("  Listening to Goodix GT911 touch events over ADB...")
+    print("  Listening to Goodix GT911 touch events over UDP...")
     print("=" * 60)
     stop_event = threading.Event()
+    t1 = threading.Thread(target=udp_listener_thread, args=(None, stop_event), daemon=True)
+    t1.start()
     try:
-        event_listener_thread(master_fd=None, stop_event=stop_event)
+        while not stop_event.is_set():
+            time.sleep(0.5)
     except KeyboardInterrupt:
         stop_event.set()
         log("Exiting Monitor Mode...")
@@ -239,7 +268,7 @@ def main():
     )
     args = parser.parse_args()
 
-    check_adb()
+    check_connection()
 
     if args.monitor or not sys.stdin.isatty():
         run_monitor_mode()

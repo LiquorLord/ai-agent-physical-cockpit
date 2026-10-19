@@ -24,3 +24,17 @@ factory_reverse/logs/*.log
 .DS_Store
 *.swp
 *~
+
+# Buildroot workspace large trees & scratch
+buildroot_workspace/buildroot/
+buildroot_workspace/.*_del/
+buildroot_workspace/binaries/
+factory_reverse/backups/factory_zImage
+
+# Release output large disk images
+output/
+logs/
+factory_reverse/factory_vmlinux.bin
+archive/**/*.bin
+firmware/backup_sdcard_phase7/
+buildroot_workspace/patches/glibc_patched/

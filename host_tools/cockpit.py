@@ -27,22 +27,36 @@ def log(msg):
     print(f"\033[1;36m[{timestamp}] [Cockpit]\033[0m {msg}", flush=True)
 
 def check_device():
-    """Verify device connectivity over ADB"""
+    """Verify device connectivity (USB CDC-NCM IP or ADB)"""
+    if subprocess.run(["ping", "-c", "1", "-W", "1", "192.168.100.1"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+        log("[*] V553 High-Speed USB link active (192.168.100.1)")
+        return True
     res = subprocess.run(["adb", "devices"], capture_output=True, text=True)
     devices = [line.split()[0] for line in res.stdout.strip().split("\n") if "\tdevice" in line]
     if not devices:
         log("Waiting for Allwinner V553 device over USB...")
         subprocess.run(["adb", "wait-for-device"])
-        log("Device connected!")
-    # Setup port forwarding
-    subprocess.run(["adb", "forward", "tcp:5900", "tcp:5900"], check=True)
-    subprocess.run(["adb", "forward", "tcp:5901", "tcp:5901"], check=True)
+        log("Device connected via ADB!")
+    subprocess.run(["adb", "forward", "tcp:5900", "tcp:5900"], check=False)
+    subprocess.run(["adb", "forward", "tcp:5901", "tcp:5901"], check=False)
     return True
+
+def is_gud_active():
+    """Check if V553 GUD hardware display is detected and active"""
+    import glob
+    for path in glob.glob("/sys/class/drm/card*-USB-1/status"):
+        try:
+            with open(path) as f:
+                if f.read().strip() == "connected":
+                    return True
+        except Exception:
+            pass
+    return False
 
 def get_window_geometry(win_name):
     """Find X11 window offset and size via xwininfo"""
     try:
-        out = subprocess.check_output(["xwininfo", "-name", win_name], text=True)
+        out = subprocess.check_output(["xwininfo", "-name", win_name], env=os.environ, text=True)
         x, y, w, h = 0, 0, 1200, 600
         for line in out.splitlines():
             line = line.strip()
@@ -59,9 +73,10 @@ def get_window_geometry(win_name):
         log(f"Window search error: {e}")
         return None
 
-def start_stream_subprocess(mode="dual", stream_type="test", window=None, display=None, fps=25, x=0, y=0):
+def start_stream_subprocess(mode="dual", stream_type="test", window=None, display=None, fps=10, x=0, y=0):
     """Launch stream_to_monitor.py as a background subprocess"""
-    cmd = [sys.executable, STREAMER_SCRIPT, "--mode", mode, "--fps", str(fps)]
+    current_display = display or os.environ.get("DISPLAY", ":1")
+    cmd = [sys.executable, STREAMER_SCRIPT, "--mode", mode, "--fps", str(fps), "--display", current_display]
 
     if stream_type == "test":
         cmd.append("--test")
@@ -70,13 +85,13 @@ def start_stream_subprocess(mode="dual", stream_type="test", window=None, displa
         if geom:
             wx, wy, _, _ = geom
             cmd.extend(["--x", str(wx), "--y", str(wy)])
-            log(f"[*] Locked on window '{window}' at coordinates ({wx}, {wy})")
+            log(f"[*] Locked on window '{window}' at coordinates ({wx}, {wy}) on display {current_display}")
         else:
             log(f"[!] Window '{window}' not found, falling back to desktop origin.")
     elif display:
-        cmd.extend(["--display", display, "--x", str(x), "--y", str(y)])
+        cmd.extend(["--x", str(x), "--y", str(y)])
 
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc = subprocess.Popen(cmd, env=os.environ, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return proc
 
 def wait_for_window(win_name, timeout=3.0):
@@ -94,7 +109,8 @@ def configure_i3_window(win_name):
     if shutil.which("i3-msg"):
         subprocess.run(
             ["i3-msg", f'[title="{win_name}"] floating enable, border pixel 0, resize set 1200 600'],
-            capture_output=True
+            capture_output=True,
+            env=os.environ
         )
 
 def main():
@@ -114,7 +130,7 @@ def main():
     parser.add_argument("--test", action="store_true", help="Stream dynamic benchmark test pattern")
     parser.add_argument("--display", help="Stream X11 display region (e.g. :1.0)")
     parser.add_argument("--window", help="Stream a specific X11 window by name")
-    parser.add_argument("--fps", type=int, default=25, help="Streaming framerate (default: 25)")
+    parser.add_argument("--fps", type=int, default=10, help="Streaming framerate (default: 10, prevents USB bus saturation)")
     parser.add_argument("--mode", choices=["dual", "full"], default="dual", help="Display mode (default: dual)")
     parser.add_argument("--no-stream", action="store_true", help="Do not start display stream (PTY only)")
     parser.add_argument("cmd", nargs="*", default=None, help="Target command to run in PTY (default: agy)")
@@ -126,7 +142,12 @@ def main():
     print("  Tactile Actions: [PROCEED] [GRILL-ME] [PLAN] [STOP]")
     print("=" * 65)
 
-    check_device()
+    gud_mode = is_gud_active()
+    if gud_mode:
+        log("\033[1;32m[+] Native Hardware USB Display (GUD) detected!\033[0m")
+        setup_script = os.path.join(SCRIPT_DIR, "setup_gud_screen.sh")
+        if os.path.exists(setup_script):
+            subprocess.run([setup_script], check=False)
 
     default_agy = shutil.which("agy") or os.path.expanduser("~/.local/bin/agy")
     target_cmd = args.cmd if args.cmd else [default_agy]
@@ -139,22 +160,46 @@ def main():
         win_title = "AGY-Cockpit"
         agent_exec = [sys.executable, AGENT_SCRIPT, *target_cmd]
         
-        display = os.environ.get("DISPLAY", ":1")
+        display = os.environ.get("DISPLAY") or ":1"
+        os.environ["DISPLAY"] = display
         env = os.environ.copy()
         env["DISPLAY"] = display
+        # Unset TMUX to allow clean attachment into existing or new sessions
+        env.pop("TMUX", None)
+        # Use Mesa software GL to protect against host NVIDIA driver/library mismatches
+        env["__GLX_VENDOR_LIBRARY_NAME"] = "mesa"
+        env["LIBGL_ALWAYS_SOFTWARE"] = "1"
 
+        term_cmd = None
         alacritty_bin = shutil.which("alacritty")
         if alacritty_bin:
+            try:
+                t_check = subprocess.run([alacritty_bin, "-e", "true"], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.5)
+                if t_check.returncode == 0:
+                    term_cmd = [
+                        alacritty_bin,
+                        "--title", win_title,
+                        "-o", 'window.decorations="None"',
+                        "-o", 'window.padding.x=0',
+                        "-o", 'window.padding.y=0',
+                        "-e", *agent_exec
+                    ]
+                    log(f"Launching dedicated borderless Cockpit Terminal via Alacritty...")
+            except Exception:
+                pass
+
+        if not term_cmd and shutil.which("xfce4-terminal"):
             term_cmd = [
-                alacritty_bin,
-                "--title", win_title,
-                "-o", 'window.decorations="None"',
-                "-o", 'window.padding.x=0',
-                "-o", 'window.padding.y=0',
-                "-e", *agent_exec
+                "xfce4-terminal",
+                f"--title={win_title}",
+                "--hide-menubar",
+                "--hide-borders",
+                "--hide-toolbar",
+                "--geometry=120x30",
+                "-x", *agent_exec
             ]
-            log(f"Launching dedicated borderless Cockpit Terminal via Alacritty...")
-        else:
+            log(f"Launching dedicated borderless Cockpit Terminal via xfce4-terminal...")
+        elif not term_cmd and shutil.which("gnome-terminal"):
             term_cmd = [
                 "gnome-terminal",
                 f"--title={win_title}",
@@ -162,27 +207,40 @@ def main():
                 "--", *agent_exec
             ]
             log(f"Launching dedicated Cockpit Terminal via gnome-terminal...")
+        elif not term_cmd:
+            term_cmd = agent_exec
 
         term_proc = subprocess.Popen(term_cmd, env=env)
 
-        # Wait for window and configure i3
-        time.sleep(0.4)
-        configure_i3_window(win_title)
-        geom = wait_for_window(win_title, timeout=3.0)
-        if geom:
-            wx, wy, ww, wh = geom
-            log(f"Window '{win_title}' mapped at ({wx}, {wy}) size {ww}x{wh}")
+        if gud_mode:
+            time.sleep(0.3)
+            if shutil.which("i3-msg"):
+                subprocess.run(
+                    ["i3-msg", f'[title="{win_title}"] floating disable, move container to workspace 4, focus'],
+                    capture_output=True,
+                    env=os.environ
+                )
+            log("Cockpit window assigned directly to GUD hardware display on Workspace 4.")
+            log("Zero floating windows on primary monitors • Native GPU hardware output.")
         else:
-            log(f"[!] Warning: Could not locate window '{win_title}' geometry, streaming desktop origin")
+            # Wait for window and configure i3
+            time.sleep(0.4)
+            configure_i3_window(win_title)
+            geom = wait_for_window(win_title, timeout=3.0)
+            if geom:
+                wx, wy, ww, wh = geom
+                log(f"Window '{win_title}' mapped at ({wx}, {wy}) size {ww}x{wh}")
+            else:
+                log(f"[!] Warning: Could not locate window '{win_title}' geometry, streaming desktop origin")
 
-        if not args.no_stream:
-            log(f"Starting display stream ({args.mode} mode @ {args.fps}fps) locked on '{win_title}'...")
-            stream_proc = start_stream_subprocess(
-                mode=args.mode,
-                stream_type="window",
-                window=win_title,
-                fps=args.fps
-            )
+            if not args.no_stream:
+                log(f"Starting display stream ({args.mode} mode @ {args.fps}fps) locked on '{win_title}'...")
+                stream_proc = start_stream_subprocess(
+                    mode=args.mode,
+                    stream_type="window",
+                    window=win_title,
+                    fps=args.fps
+                )
 
         log("Cockpit active! Touch screen buttons on the dashcam to interact.")
         log("Press Ctrl+C in this terminal to shut down.")
