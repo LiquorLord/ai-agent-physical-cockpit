@@ -31,7 +31,7 @@ if [ -z "$IMG_INPUT" ] || [ ! -f "$IMG_INPUT" ]; then
     echo "[-] Error: Production SD image not found."
     echo ""
     echo "Please download 'v553_ai_terminal_sdboot.img.gz' from the GitHub Releases page:"
-    echo "  https://github.com/your-username/ai-agent-physical-cockpit/releases"
+    echo "  https://github.com/LiquorLord/ai-agent-physical-cockpit/releases"
     echo ""
     echo "Usage:"
     echo "  $0 /dev/sdX [path_to_image]"
