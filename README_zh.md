@@ -13,11 +13,19 @@
 
 ## 1. 项目概述
 
-**AI-Agent 物理驾驶舱** 是一个开源硬件/软件改造项目，将普遍且经济实惠的 Allwinner V553 (`sun8iw21`) 汽车智能屏幕重新利用为 AI 辅助编程（反重力 CLI / vibe-coding）的智能、无人驾驶物理伴侣。
+**AI-Agent 物理驾驶舱** 的前身，是一台 **eBay 上买来的便宜行车记录仪**。
+
+作者在 eBay 上买下一台 10.26" 行车记录仪，惊讶地发现：价格虽然低廉，配置和功能却相当不错。尤其是它那块**带鱼屏（超宽条形屏）**，太适合放在开发者键盘前方、主显示器正下方，作为 **vibe-coding** 的专属副驾。
+
+于是黑客精神发作：拆开外壳、焊上调试串口线，把里面的 **Allwinner V553**（`sun8iw21`，运行 Linux）逆向了出来，最终做成这个开源的、免驱动的 AI 编程物理伴侣（Antigravity CLI / vibe-coding）。这台设备本质上是换标的 **XGODY H26** 类 10.26" 双摄行车记录仪。
+
+<p align="center">
+  <img src="docs/images/device.jpg" alt="被改装成 vibe-coding 驾驶舱的 10.26 英寸行车记录仪" width="70%">
+</p>
 
 ### 黄金法则：100% 无侵入双启动
-- **无需焊接，零风险**：不需要硬件修改。
-- **MicroSD 拔出**：从 16MB SPI NOR Flash (`cdr` 视频记录器，无线 Apple CarPlay / HiCar) 启动未篡改的工厂 Linux 4.9 系统。
+- **你无需焊接**：唯一的焊接发生在逆向阶段、由作者一次性完成 —— 你永远不用碰烙铁。
+- **MicroSD 拔出**：从 16MB SPI NOR Flash 启动未篡改的工厂 Linux 4.9 系统（`cdr` 视频记录器，无线 Apple CarPlay / HiCar）。
 - **插入 MicroSD**：Allwinner 芯片 BROM 优先直接从 SDC0（第 16 扇区 eGON 头部）启动我们的定制 AI 驾驶舱操作系统。
 
 ---
