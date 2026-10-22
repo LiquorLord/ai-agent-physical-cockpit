@@ -169,27 +169,53 @@ make -C /path/to/your/kernel ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- M=$PWD 
 
 ### 6.4 Buildroot 根文件系统
 
-```bash
-make -C board/buildroot v553_cockpit_defconfig
-make -C board/buildroot
-```
+1. 获取 Buildroot 源码树（推荐 2024.02 LTS 或更新版本）：
+   ```bash
+   git clone --depth=1 -b 2024.02 https://github.com/buildroot/buildroot.git buildroot_src
+   cd buildroot_src
+   ```
+2. 载入本项目的 defconfig 并启动构建：
+   ```bash
+   make defconfig BR2_DEFCONFIG=../board/buildroot/v553_cockpit_defconfig
+   make -j$(nproc)
+   ```
 
 使用外部 Bootlin ARMv7 EABI-HF glibc 工具链；参见 `board/buildroot/patches/0001-v553-gcc13-binutils242-modernization.patch`。
 
 ---
 
-## 7. 刷写
+## 7. 刷写与快速上手
 
-### 7.1 完整生产 SD 镜像（最快路径）
+### 7.1 预编译生产 SD 镜像（推荐，开箱即用）
 
+最快上手的方式是直接从 [GitHub Releases](../../releases) 下载免编译固件镜像：
+
+- **固件资产**：`v553_ai_terminal_sdboot.img.gz`（压缩包仅约 21 MB，解压后 900 MB）
+- **完整性校验**：请对照 `v553_ai_terminal_sdboot.img.gz.sha256`
+
+#### Linux / macOS 用户：
 ```bash
-host-tools/flash_production_sd.sh   # dd 预构建的 .img 到 /dev/sdX
+# 使用内置的安全交互式刷卡工具：
+./host-tools/flash_production_sd.sh /dev/sdX v553_ai_terminal_sdboot.img.gz
+
+# 或使用管道流直接解压并写入：
+gzip -dc v553_ai_terminal_sdboot.img.gz | sudo dd of=/dev/sdX bs=4M status=progress conv=fsync
 ```
 
-### 7.2 更新现有 SD 卡上的内核 / DTB / 用户空间
+#### Windows 用户：
+使用 7-Zip 解压 `.img.gz` 得到 `.img` 文件，通过 [Rufus](https://rufus.ie/) 或 [balenaEtcher](https://etcher.balena.io/) 一键写入 MicroSD 卡。
+
+### 7.2 启动 副驾 Cockpit
+1. 将刷好系统的 MicroSD 卡插入全志 V553 行车记录仪的 TF 卡槽。
+2. 用 USB Type-C 数据线将设备连接至电脑主机。
+3. 接通电源开机。全志片上硬件 BROM 会自动从 MicroSD 第 16 扇区优先启动。
+4. 电脑主机会自动枚举出一个原生的 1600x600 副屏显示器（GUD）和免驱键盘（HID）！
+
+### 7.3 更新现有 SD 卡上的内核 / DTB / 用户空间
 
 ```bash
-host-tools/update_kernel_sd.sh      # 自动检测 SD 启动分区
+# 增量升级已烧录卡内的 Linux 6.12 内核与设备树
+./host-tools/update_kernel_sd.sh /dev/sdX1 [output_dir]
 ```
 
 ---
