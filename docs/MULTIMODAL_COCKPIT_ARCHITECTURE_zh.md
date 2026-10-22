@@ -6,6 +6,8 @@
 
 ---
 
+> **⚠️ 状态说明 —— 本文档描述的是设计愿景，并非所有内容都已在当前代码中实现。** 当前实际交付的是 **GUD 显示器 + HID 键盘** 复合设备（2 个 USB 功能）以及 DRM/KMS 显示和 GT911 触摸屏。CDC-NCM 通道、摄像头/V4L2 手势引擎、麦克风/KWS、5GHz Wi-Fi 和 BLE 属于**路线图 / 历史路线**项，正文中已相应标注。
+
 ## 1. 架构总揽与核心设计共识
 
 经与用户通过 `/grill-me` 深度对齐，确立将全志 V553（`sun8iw21`）从单一的“录像机/副屏”彻底升维为**多模态端侧 AI 智能物理伴侣座舱（Multimodal Edge-AI Companion Terminal）**。
@@ -33,6 +35,10 @@
 ```
 
 ---
+
+**图例 —— 已交付 vs 愿景：**
+- ✅ **已交付（在代码中）：** GUD 显示器（`0x1d50:0x614d`）+ HID 键盘 + 本地 Action Bar + GT911 触摸。
+- 🔮 **愿景 / 路线图（代码中尚未实现）：** HID 多点触控直通、CDC-NCM（历史路线 —— 已退役：4 端点限制 + 主机软件）、摄像头 + V4L2 手势、麦克风/KWS、5GHz Wi-Fi、BLE。
 
 ## 2. 硬件总线速率与通道分配第一性原理
 
@@ -62,8 +68,9 @@
    - 视频帧留在 V553 芯片本地由 Cortex-A7 / NPU 处理，运行极速手势识别（✌️/👌/✊）与视线感知，仅将识别后的几字节结构化事件指令上传给宿主机。
 4. **语音感知（端侧 AI 优先，零总线占用）**：
    - 麦克风音频留存本地进行唤醒词监测（Keyword Spotting），降低总线与宿主机 CPU 开销。
-5. **网络与调试通道（CDC-NCM 高速以太网）**：
-   - 维持 `192.168.100.1` 虚拟以太网，提供 ADB、免密 Root SSH 与远程状态遥测。
+5. **网络与调试通道（CDC-NCM 高速以太网）—— 历史路线，未交付**：
+   - 早期的 CDC-NCM（`usb0`，`192.168.10.1`）路线提供 ADB / SSH / 遥测，并以比 GUD 更快的速度流式传输视频。
+   - 因 (a) V553 的 USB OTG 仅暴露 **4 个端点**，GUD + HID + NCM 无法共存；(b) NCM 需要主机端解码软件而退役。最终设备仅使用 GUD + HID。
 
 ---
 
@@ -71,7 +78,8 @@
 
 1. **有线工作站模式（Connected to PC USB-C）**：
    - 数据与供电同轴直通；
-   - 自动激活 GUD 硬件显卡 + HID 触屏 + CDC-NCM 网络；
+   - 自动激活 **GUD 硬件显卡 + HID 键盘** 复合设备（当前已交付）；
+   - （愿景：再加 HID 多点触控 + CDC-NCM 网络 —— 后者因上述 4 端点 / 主机软件原因已退役。）
    - 宿主机识别为硬件扩展显示器（`/dev/dri/card0` 1600x600）。
 2. **无线独立漫游模式（Standalone Charger / Power Bank）**：
    - 当检测到 USB 数据枚举超时（仅接入 5V 充电宝/车载供电时）；
@@ -89,5 +97,5 @@
 | :--- | :--- | :--- | :--- |
 | `gud_v553` | [`firmware/apps/gud_v553.c`](../firmware/apps/gud_v553.c) | GUD 显卡端点协议解析、脏矩形旋转显存映射 | `/dev/ffs-gud` + `/dev/fb0` |
 | `touch_cockpit` | [`firmware/apps/touch_cockpit.go`](../firmware/apps/touch_cockpit.go) | 汇顶 GT911 触控拦截、Action Bar 渲染与 UDP 上报 | `/dev/input/event0` |
-| `gesture_detector`| [`firmware/apps/gesture_detector.go`](../firmware/apps/gesture_detector.go)| 本地摄像头 30fps 手势识别与视线追踪 | `/dev/video12` |
+| `gesture_detector` *（已归档）* | [`firmware/apps/gesture_detector.go`](../firmware/apps/gesture_detector.go)| 本地摄像头 30fps 手势识别（仅工厂 Linux 4.9；主线未启动） | `/dev/video0` / `/dev/video8` |
 | `switch_to_gud` | [`firmware/apps/switch_to_gud.sh`](../firmware/apps/switch_to_gud.sh) | 复合 Gadget 动态管理、UDC 控制器状态机 | `/sys/kernel/config/usb_gadget` |

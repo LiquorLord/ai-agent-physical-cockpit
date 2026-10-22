@@ -35,9 +35,9 @@ def log(msg):
 
 def check_connection():
     """Verify connection to V553 dashcam (USB IP or ADB)"""
-    res = subprocess.run(["ping", "-c", "1", "-W", "1", "192.168.100.1"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    res = subprocess.run(["ping", "-c", "1", "-W", "1", "192.168.10.1"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if res.returncode == 0:
-        log("[*] V553 High-Speed USB link active (192.168.100.1)")
+        log("[*] V553 High-Speed USB link active (192.168.10.1)")
         return True
     res = subprocess.run(["adb", "devices"], capture_output=True, text=True)
     lines = [line for line in res.stdout.strip().split("\n") if "\tdevice" in line]
@@ -261,7 +261,7 @@ def switch_device_profile(profile_name):
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.settimeout(0.5)
-        s.sendto(f"profile {profile_name}\n".encode(), ("192.168.100.1", 8889))
+        s.sendto(f"profile {profile_name}\n".encode(), ("192.168.10.1", 8889))
         s.close()
     except Exception:
         pass

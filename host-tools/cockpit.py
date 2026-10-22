@@ -28,8 +28,8 @@ def log(msg):
 
 def check_device():
     """Verify device connectivity (USB CDC-NCM IP or ADB)"""
-    if subprocess.run(["ping", "-c", "1", "-W", "1", "192.168.100.1"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
-        log("[*] V553 High-Speed USB link active (192.168.100.1)")
+    if subprocess.run(["ping", "-c", "1", "-W", "1", "192.168.10.1"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+        log("[*] V553 High-Speed USB link active (192.168.10.1)")
         return True
     res = subprocess.run(["adb", "devices"], capture_output=True, text=True)
     devices = [line.split()[0] for line in res.stdout.strip().split("\n") if "\tdevice" in line]

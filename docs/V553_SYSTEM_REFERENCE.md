@@ -131,14 +131,20 @@ The following 80-byte block represents the exact physical calibration extracted 
 ### 6.1 USB Controller Specifications
 - IP Core: Allwinner Sunxi Musb High-Speed OTG Controller
 - UDC Name: `4100000.udc-controller`
-- Supported Modes:
-  - **ADB (Android Debug Bridge)**: Vendor ID `0x18d1`, Product ID `0xd002` (FunctionFS `ffs.adb`)
-  - **CDC-NCM (High-Speed Ethernet)**: Virtual network interface `usb0` (Target IP: `192.168.100.1/24`)
+- **Shipped composite gadget (`switch_to_gud.sh`)**:
+  - **GUD (Generic USB Display)**: Vendor ID `0x1d50`, Product ID `0x614d` (FunctionFS `ffs.gud`)
   - **USB HID Keyboard**: Virtual input device `/dev/hidg0` for keystroke injection
+- **Former route (kept for debugging, not bound at boot)**:
+  - **ADB (Android Debug Bridge)**: Vendor ID `0x18d1`, Product ID `0xd002` (FunctionFS `ffs.adb`)
+  - **CDC-NCM (High-Speed Ethernet)**: Virtual network interface `usb0` (device IP `192.168.10.1/24`)
+  - The V553 USB OTG controller exposes only **4 endpoints**, so GUD + HID + NCM cannot coexist. NCM streamed video faster than GUD but required host-side software — hence the switch to the GUD + HID design.
 
 ### 6.2 Wireless Subsystem (AltoBeam ATBM6165)
 - **Wi-Fi**: 802.11 b/g/n 1T1R @ 2.4 GHz (SDIO interface, module `atbm6165.ko`)
 - **Bluetooth**: BT 4.2 / BLE (UART interface, module `hci_uart.ko`, firmware `atbm6062_fw.bin`)
+- **Mainline status**: the board DTS declares the `mmc1` SDIO slot (Wi-Fi) and the UART3
+  Bluetooth node, and `CONFIG_BT_HCIUART` is enabled — but `CONFIG_WLAN` is **not set** and
+  no Wi-Fi/BT userspace service is launched at boot. Wireless is bring-up-in-progress, not yet functional.
 
 ---
 

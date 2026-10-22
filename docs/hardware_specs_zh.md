@@ -137,6 +137,8 @@
 
 ## 4. 多媒体
 
+> **软件状态：** 主线 6.12 板级 DTS 尚未启用摄像头（CSI）驱动（`CONFIG_MEDIA_CAMERA_SUPPORT` 未设置），因此 `/dev/video0` 仅存在于工厂 Linux 4.9 内核。在主线上，音频为 **DMIC** 声卡（`sound_dmic`）；下面的模拟编解码器 / I2S 路径是工厂配置，尚无主线应用。
+
 ### 4.1 摄像头（MIPI CSI）
 
 | 参数 | 值 |

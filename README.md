@@ -27,15 +27,22 @@
 - 🖥️ **Ultra-Wide 10.26" Touch Display (1600x600)**:
   - 4-Lane MIPI-DSI high-refresh bar display (`wtl1026boe2l`) with Goodix GT911 capacitive touchscreen.
   - Three-zone HUD layout: Live Thinking Chain, Active Code Diff / Plan Artifacts, and Physical Control Touch Buttons.
-- 🔌 **Universal Driverless USB Composite Gadget**:
-  - Enumerates over USB Type-C as **USB CDC-NCM Ethernet** (192.168.10.x, ~480Mbps) + **USB HID Keyboard** (`/dev/hidg0`).
-  - Supported natively out-of-the-box on **Linux, macOS, and Windows** without installing third-party drivers.
+- 🖥️ **Driverless USB Display + Keyboard (GUD + HID)**:
+  - Enumerates over USB Type-C as a **GUD (Generic USB Display)** (`0x1d50:0x614d`) + **USB HID Keyboard** (`/dev/hidg0`) composite device.
+  - The host sees the cockpit as a native 1600×600 monitor plus a USB keyboard — supported natively on **Linux, macOS, and Windows** with no third-party drivers or host-side streaming software.
 - 🖲️ **Zero-Friction Physical Touch Controls**:
   - Large on-screen buttons: `🟢 PROCEED` (injects Enter / `y`), `🛑 STOP` (injects `Ctrl+C`), and `📋 PLAN` (injects `/plan`).
   - Keep your hands on the workflow without typing confirmations.
-- 👁️ **Edge Multimodal AI**:
-  - **Vision Engine**: Real-time onboard camera gesture tracking (👌 OK -> Proceed, ✌️ V -> Approve/Plan, ✋ Palm -> Emergency Stop).
-  - **Dual-Tier Compute**: on-device Cortex-A7 NEON inference, or hybrid streaming to a local high-performance node.
+- 👁️ **Edge Multimodal AI (Roadmap / Archived)**:
+  - **Gesture Engine (archived)**: a V4L2 YCbCr skin-segmentation classifier (`firmware/apps/gesture_detector.go`) was validated on the factory Linux 4.9 kernel (👌 / ✌️ / ✊ gestures). It is **archived** because the mainline 6.12 kernel has no camera (CSI) driver yet — see `docs/GESTURE_ENGINE_ARCHIVE*.md`.
+  - **Dual-Tier Compute (planned)**: on-device Cortex-A7 NEON inference, or hybrid streaming to a local high-performance node.
+
+> **Why GUD + HID instead of CDC-NCM:** an earlier CDC-NCM virtual-Ethernet route streamed the
+> display as video, which was much faster than GUD. It was retired because (1) the V553 USB OTG
+> controller exposes only **4 endpoints**, so GUD + HID + NCM cannot coexist, and (2) NCM required
+> host-side software (`stream_to_monitor.py`, `cockpit.py`) to decode the stream — whereas GUD + HID
+> appears as a plain monitor and keyboard with zero host software. The legacy NCM/ADB scripts remain
+> in `firmware/boot/setup_gadget.sh` and `host-tools/` for debugging only.
 
 ---
 
@@ -104,9 +111,9 @@
 | **MicroSD** | Up to 128 GB | SDC0 interface (BROM priority boot device) |
 | **Display** | 10.26-inch IPS Bar Display | BOE `wtl1026boe2l`, 1600x600, 4-lane MIPI-DSI, DCLK 53.0MHz |
 | **Touch** | Capacitive Multi-touch | Goodix GT911 on I2C1 |
-| **Camera** | MIPI CSI Camera | `/dev/video0` front-facing wide angle |
-| **Audio** | Mic & Speaker | Onboard MEMS microphone & audio codec |
-| **USB** | Type-C USB 2.0 OTG | High-Speed 480Mbps, ConfigFS Composite Gadget (NCM+HID) |
+| **Camera** | MIPI CSI (not wired in mainline) | `/dev/video0` on factory Linux 4.9 only; no mainline CSI driver yet |
+| **Audio** | DMIC (driver only) | `sound_dmic` ALSA card enabled; no mic app / no speaker output yet |
+| **USB** | Type-C USB 2.0 OTG | High-Speed 480Mbps, GUD display + HID keyboard composite gadget |
 | **UART** | Debug Serial Port | PCB test points `tx0`, `rx0`, `GND` @ 115200 8N1 |
 | **Board ID** | `f900x-v2.2` | `km2026240602026.01.03jdh` |
 
@@ -190,15 +197,26 @@ host-tools/update_kernel_sd.sh      # auto-detects the SD boot partition
 
 ---
 
-## 8. Host PC Streaming
+## 8. Host PC Usage (GUD Display + HID)
 
-Connect the device to your PC using a USB Type-C cable:
+Connect the device to your PC with a USB Type-C cable. On the final (mainline 6.12)
+firmware the device enumerates as a **native GUD USB display + HID keyboard** — no host
+streaming software is needed:
+
+- The display appears as a standard monitor (e.g. `/dev/dri/card0` on Linux, or a
+  second screen on macOS / Windows).
+- The action bar injects keystrokes directly via the HID keyboard interface.
+
+### 8.1 Legacy streaming tools (former CDC-NCM / ADB route)
+
+The following tools belong to the earlier CDC-NCM / ADB streaming route and are kept
+only for historical reference and low-level debugging:
 
 ```bash
-# Test display output with a high-speed 30fps stream
+# Test display output with a high-speed 30fps stream (legacy NCM/ADB route)
 ./host-tools/stream_to_monitor.py --test --fps 30
 
-# Stream an active X11 desktop / window to the 1600x600 screen
+# Stream an active X11 desktop / window to the 1600x600 screen (legacy route)
 ./host-tools/stream_to_monitor.py --display :1.0 --fps 30
 
 # Unified CLI (dual-zone streaming + PTY shell + touch injection)

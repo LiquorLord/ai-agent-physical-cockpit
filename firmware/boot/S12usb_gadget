@@ -1,12 +1,12 @@
 #!/bin/sh
 # ==============================================================================
-# S12usb_gadget - On-boot GUD Display + CDC-NCM Composite Gadget Launcher
-# Allwinner V553 on-boot hardware-level USB display and high-speed network composite device service
+# S12usb_gadget - On-boot GUD Display + HID Keyboard Composite Gadget Launcher
+# Allwinner V553 on-boot hardware-level USB display and HID keyboard composite device service
 # ==============================================================================
 
 case "$1" in
     start)
-        echo "[USB] Activating GUD USB Display + CDC-NCM Composite Gadget..."
+        echo "[USB] Activating GUD USB Display + HID Keyboard Composite Gadget..."
         [ -f /sys/devices/platform/soc/usbc0/otg_role ] && echo 2 > /sys/devices/platform/soc/usbc0/otg_role 2>/dev/null
         /opt/switch_to_gud.sh
         ;;

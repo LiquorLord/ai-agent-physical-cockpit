@@ -137,6 +137,12 @@
 
 ## 4. Multimedia
 
+> **Software status:** the mainline 6.12 board DTS does not yet enable a camera (CSI)
+> driver (`CONFIG_MEDIA_CAMERA_SUPPORT` is unset), so `/dev/video0` only exists on the
+> factory Linux 4.9 kernel. On mainline, audio is the **DMIC** sound card (`sound_dmic`);
+> the analog codec / I2S path below is the factory configuration and has no mainline
+> application yet.
+
 ### 4.1 Camera (MIPI CSI)
 
 | Parameter | Value |
