@@ -188,28 +188,54 @@ make -C /path/to/your/kernel ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- M=$PWD 
 
 ### 6.4 Buildroot rootfs
 
-```bash
-make -C board/buildroot v553_cockpit_defconfig
-make -C board/buildroot
-```
+1. Obtain Buildroot (2024.02 LTS or newer):
+   ```bash
+   git clone --depth=1 -b 2024.02 https://github.com/buildroot/buildroot.git buildroot_src
+   cd buildroot_src
+   ```
+2. Apply the defconfig and build:
+   ```bash
+   make defconfig BR2_DEFCONFIG=../board/buildroot/v553_cockpit_defconfig
+   make -j$(nproc)
+   ```
 
 Uses the external Bootlin ARMv7 EABI-HF glibc toolchain; see
 `board/buildroot/patches/0001-v553-gcc13-binutils242-modernization.patch`.
 
 ---
 
-## 7. Flashing
+## 7. Flashing & Quick Start
 
-### 7.1 Full production SD image (quickest path)
+### 7.1 Prebuilt Production SD Image (Recommended)
 
+The quickest way to get started is downloading the ready-to-flash image from [GitHub Releases](../../releases):
+
+- **Artifact**: `v553_ai_terminal_sdboot.img.gz` (~21 MB compressed, 900 MB raw)
+- **Integrity**: verify against `v553_ai_terminal_sdboot.img.gz.sha256`
+
+#### Linux / macOS:
 ```bash
-host-tools/flash_production_sd.sh   # dd a prebuilt .img to /dev/sdX
+# Flash using the safe interactive utility:
+./host-tools/flash_production_sd.sh /dev/sdX v553_ai_terminal_sdboot.img.gz
+
+# Or manual pipeline decompression & write:
+gzip -dc v553_ai_terminal_sdboot.img.gz | sudo dd of=/dev/sdX bs=4M status=progress conv=fsync
 ```
 
-### 7.2 Update kernel / DTB / userspace on an existing SD card
+#### Windows:
+Decompress the `.img.gz` using 7-Zip, then flash using [Rufus](https://rufus.ie/) or [balenaEtcher](https://etcher.balena.io/) directly to your MicroSD card.
+
+### 7.2 Booting into Cockpit
+1. Insert the flashed MicroSD card into the V553 dashcam card slot.
+2. Connect a USB Type-C cable between the device and your PC host.
+3. Power on. Allwinner silicon BROM will automatically boot from Sector 16 on the MicroSD.
+4. Your host OS will enumerate a native 1600x600 display (GUD) and keyboard (HID)!
+
+### 7.3 Update kernel / DTB / userspace on an existing SD card
 
 ```bash
-host-tools/update_kernel_sd.sh      # auto-detects the SD boot partition
+# Incrementally update kernel & DTB on an already flashed card
+./host-tools/update_kernel_sd.sh /dev/sdX1 [output_dir]
 ```
 
 ---
