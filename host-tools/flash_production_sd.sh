@@ -81,7 +81,7 @@ fi
 
 echo ""
 echo "[1/3] Unmounting existing partitions on $DEV_DISK..."
-sudo umount ${DEV_DISK}* 2>/dev/null || true
+sudo umount "${DEV_DISK}"* 2>/dev/null || true
 
 echo "[2/3] Writing image to $DEV_DISK..."
 if [[ "$IMG_INPUT" == *.gz ]]; then

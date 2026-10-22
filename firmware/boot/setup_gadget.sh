@@ -74,8 +74,7 @@ ln -sf "$GADGET_DIR/functions/hid.usb0" "$CONFIG_DIR/hid.usb0"
 ln -sf "$GADGET_DIR/functions/ffs.adb" "$CONFIG_DIR/ffs.adb"
 
 # 10. Bind UDC controller
-echo "$UDC_CONTROLLER" > "$GADGET_DIR/UDC"
-if [ $? -eq 0 ]; then
+if echo "$UDC_CONTROLLER" > "$GADGET_DIR/UDC" 2>/dev/null; then
     echo "[OK] USB Composite Gadget bound to $UDC_CONTROLLER"
 else
     echo "[WARN] Direct UDC bind failed, attempting retry..."
