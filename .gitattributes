@@ -1,0 +1,23 @@
+# Normalize line endings to LF across the repository
+* text=auto eol=lf
+
+# Explicit text types
+*.patch text
+*.mbox text
+*.dts text
+*.dtsi text
+*.defconfig text
+*.go text
+*.c text
+*.h text
+*.py text
+*.sh text eol=lf
+*.md text
+
+# Binary types
+*.png binary
+*.ko binary
+*.dtb binary
+*.raw binary
+*.img binary
+*.bin binary

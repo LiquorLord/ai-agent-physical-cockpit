@@ -1,0 +1,185 @@
+{
+  "active_profile": "agy",
+  "profiles": [
+    {
+      "id": "agy",
+      "name": "Antigravity AI Agent",
+      "badge": "AGY",
+      "color": "green",
+      "buttons": [
+        {
+          "label": "PROCEED",
+          "subtext": "[ CONFIRM / OK ]",
+          "action": "proceed",
+          "color": "green",
+          "key": "proceed\n"
+        },
+        {
+          "label": "GRILL-ME",
+          "subtext": "[ ALIGN INTERVIEW ]",
+          "action": "grill-me",
+          "color": "cyan",
+          "key": "/grill-me\n"
+        },
+        {
+          "label": "PLAN",
+          "subtext": "[ DESIGN / ARCH ]",
+          "action": "plan",
+          "color": "purple",
+          "key": "/plan\n"
+        },
+        {
+          "label": "STOP",
+          "subtext": "[ ABORT / CTRL+C ]",
+          "action": "stop",
+          "color": "red",
+          "key": "^C"
+        }
+      ]
+    },
+    {
+      "id": "claude",
+      "name": "Claude Code CLI",
+      "badge": "CLAUDE",
+      "color": "yellow",
+      "buttons": [
+        {
+          "label": "PROCEED",
+          "subtext": "[ YES / EXECUTE ]",
+          "action": "proceed",
+          "color": "green",
+          "key": "y\n"
+        },
+        {
+          "label": "COMPACT",
+          "subtext": "[ COMPACT HISTORY ]",
+          "action": "compact",
+          "color": "yellow",
+          "key": "/compact\n"
+        },
+        {
+          "label": "COST",
+          "subtext": "[ TOKENS & USAGE ]",
+          "action": "cost",
+          "color": "cyan",
+          "key": "/cost\n"
+        },
+        {
+          "label": "CANCEL",
+          "subtext": "[ ABORT / CTRL+C ]",
+          "action": "stop",
+          "color": "red",
+          "key": "^C"
+        }
+      ]
+    },
+    {
+      "id": "dsh",
+      "name": "DeepSeek / Local LLM",
+      "badge": "DSH",
+      "color": "cyan",
+      "buttons": [
+        {
+          "label": "EXECUTE",
+          "subtext": "[ SUBMIT / ENTER ]",
+          "action": "proceed",
+          "color": "green",
+          "key": "\n"
+        },
+        {
+          "label": "THINK",
+          "subtext": "[ TOGGLE R1 COT ]",
+          "action": "think",
+          "color": "cyan",
+          "key": "/think\n"
+        },
+        {
+          "label": "CLEAR",
+          "subtext": "[ RESET CONTEXT ]",
+          "action": "clear",
+          "color": "purple",
+          "key": "/clear\n"
+        },
+        {
+          "label": "STOP",
+          "subtext": "[ ABORT / CTRL+C ]",
+          "action": "stop",
+          "color": "red",
+          "key": "^C"
+        }
+      ]
+    },
+    {
+      "id": "aider",
+      "name": "Aider Pair Coding",
+      "badge": "AIDER",
+      "color": "purple",
+      "buttons": [
+        {
+          "label": "COMMIT",
+          "subtext": "[ GIT COMMIT ]",
+          "action": "commit",
+          "color": "green",
+          "key": "/commit\n"
+        },
+        {
+          "label": "UNDO",
+          "subtext": "[ REVERT CHANGE ]",
+          "action": "undo",
+          "color": "yellow",
+          "key": "/undo\n"
+        },
+        {
+          "label": "TEST",
+          "subtext": "[ RUN TEST SUITE ]",
+          "action": "test",
+          "color": "cyan",
+          "key": "/test\n"
+        },
+        {
+          "label": "CANCEL",
+          "subtext": "[ ABORT / CTRL+C ]",
+          "action": "stop",
+          "color": "red",
+          "key": "^C"
+        }
+      ]
+    },
+    {
+      "id": "shell",
+      "name": "Developer Terminal",
+      "badge": "SHELL",
+      "color": "gray",
+      "buttons": [
+        {
+          "label": "ENTER",
+          "subtext": "[ RETURN KEY ]",
+          "action": "enter",
+          "color": "green",
+          "key": "\n"
+        },
+        {
+          "label": "TAB",
+          "subtext": "[ AUTO COMPLETE ]",
+          "action": "tab",
+          "color": "cyan",
+          "key": "\t"
+        },
+        {
+          "label": "CLEAR",
+          "subtext": "[ CTRL+L CLEAR ]",
+          "action": "clear",
+          "color": "yellow",
+          "key": "^L"
+        },
+        {
+          "label": "SIGINT",
+          "subtext": "[ CTRL+C INTERRUPT ]",
+          "action": "stop",
+          "color": "red",
+          "key": "^C"
+        }
+      ]
+    }
+  ]
+}

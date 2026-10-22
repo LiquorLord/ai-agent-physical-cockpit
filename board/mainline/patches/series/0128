@@ -1,0 +1,122 @@
+From mboxrd@z Thu Jan  1 00:00:00 1970
+Return-Path: <linux-phy-bounces+linux-phy=archiver.kernel.org@lists.infradead.org>
+X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
+	aws-us-west-2-korg-lkml-1.web.codeaurora.org
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.lore.kernel.org (Postfix) with ESMTPS id 4F691E77188
+	for <linux-phy@archiver.kernel.org>; Tue, 14 Jan 2025 14:16:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=lists.infradead.org; s=bombadil.20210309; h=Sender:
+	Content-Transfer-Encoding:Content-Type:List-Subscribe:List-Help:List-Post:
+	List-Archive:List-Unsubscribe:List-Id:Cc:To:Subject:Message-ID:Date:From:
+	In-Reply-To:References:MIME-Version:Reply-To:Content-ID:Content-Description:
+	Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:
+	List-Owner; bh=mDG2oAToX0zFbyrdPQRGdTDjMG8OQzKz7Dgzk5Cvu+8=; b=TWAu9CNnVOtkVv
+	0v3wTGdNXJP55VURiE0/TH+B220Qvky9zoWBgJUX11uJfThy2AFI4CtKnaN0LRmY4CjQlT381yGdI
+	pZjcM0K7RsF++Ib/nrtDZbyMvMd/4o68U6C7zM0IoFMgTq/Y9LIbuKoXVbYiZabjbMMFiV0apI3qF
+	lw/N8YetZKxcm3ejO6Yo0bUsYjVgE8tKiuVVAutOT+lZ425/0ElmUs6ua3YZY/gq/Wlj8bxOkSNfd
+	KeQzdzcu16yq9YsIJBGuyhus8osze7JQfGepEPVm7DScujZHwMHpezsJlgP+cVBYQ8O2g5FJle5bt
+	5K/0TPoa0Y0oXQ7eFOZw==;
+Received: from localhost ([::1] helo=bombadil.infradead.org)
+	by bombadil.infradead.org with esmtp (Exim 4.98 #2 (Red Hat Linux))
+	id 1tXhiR-00000008dfm-4AHd;
+	Tue, 14 Jan 2025 14:16:23 +0000
+Received: from mail-lf1-x136.google.com ([2a00:1450:4864:20::136])
+	by bombadil.infradead.org with esmtps (Exim 4.98 #2 (Red Hat Linux))
+	id 1tXhga-00000008dDy-0AUW
+	for linux-phy@lists.infradead.org;
+	Tue, 14 Jan 2025 14:14:29 +0000
+Received: by mail-lf1-x136.google.com with SMTP id 2adb3069b0e04-5401bd6ccadso5188392e87.2
+        for <linux-phy@lists.infradead.org>; Tue, 14 Jan 2025 06:14:27 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linaro.org; s=google; t=1736864066; x=1737468866; darn=lists.infradead.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=kb+N7KX0rT6TQGPdAoyZC4q4c2muk934hfkb7Zz1PYk=;
+        b=ng9PmChdt4ZL5/ILk/LWax8wQ4rPBwTZ3hkWDthmCROVvfsjg3DkiJ2QWS6Cj6j6Em
+         HG8834i66udsK3p2+p+BAhTOEHd2gPKhTAGvgxSoKVsq2RpdN9013PxLTOaHgTIHBmMG
+         3Tx0BvKoXI/R1I4UERClN/AtrgeAJEXetGbApc5mIsBN0VZ8hkY2cCNLqJp/8m/2TSC7
+         eb/a8VZ6dT1qbOqxMGdrzV2r0J1SRt8daSo+U/y6+nQRje8YVLqi3p/gg9pbHVn4Y7dQ
+         DIWr16TquIf4waRhaVqvXxYhQLJ42/o3nw8jpCOxzUBouGbaXG2VS/2gwEecULVkJbuM
+         /BTQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1736864066; x=1737468866;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=kb+N7KX0rT6TQGPdAoyZC4q4c2muk934hfkb7Zz1PYk=;
+        b=NYjeXS6TWwbRQcIGIKCymN1i/Zgwko/SwYYNm2fwTQ70IMY+SLdZ3YwwrZv4E1ikMq
+         wkos+JJqY2hVqY2UgY1S4DIMcYBqZsCBpZVRCxAzp9pILVBXxL4RoRvOZzHU16Hd3edx
+         GzV37nLRZXcMQg/To6ukKv0EZFIfpezmODBXTdVMgqI7qRqOy6BLtXB3UfOTpEiHuuPR
+         bnK+xd6kUPk2mKc/TGPUe7VKlnwXbzbnANzZknDAPxIdZLoVsKEUdqGNxTcVvtg+8rNF
+         m3tGQlNCnXW0bBRpnycpM4L4MP7VbYeW2SnlB0vWFohfOD/nCEibj5pevhAWXTlPXSDB
+         IawA==
+X-Forwarded-Encrypted: i=1; AJvYcCXyY5Lt1GEplPsKe0/7XEbMESGNuvKdBgdoH13Ba/7+f8TIej0YTnMWn1DMEb9cE4+RizdDJYDVVaE=@lists.infradead.org
+X-Gm-Message-State: AOJu0Yw/mCztDROtUwLHxpH1DsS5glBuPFbRdOxl7xIKQs1s9JK+aOhZ
+	QwGW9NvkKrr9zhFL0uYZgSbQEENjFQuwd06DLEVpLQRYe39/MVwi9MkG0GYUjuiby6yK/6rQDSd
+	QwWsZOj4osv7wSp0/3xZE+he+TCiaiF95uj7pvA==
+X-Gm-Gg: ASbGnctCM8Yh7RQzsD9wv/i5E1UA6IpMl1ExDWbZe2/YQ9JZNzFLmJBTIX4emB7K+Bh
+	VxZKdHgc8WYH4BdYSwX+lZt9HfFO0K8e054qz
+X-Google-Smtp-Source: AGHT+IGQT/qQTanY0VeTmw14H4V1Aaz+aOnG3UKuUwYfMTsXxCW542oDFqS8vWTFAvYHrASeV6/2sAbC1dUoPYmd1+8=
+X-Received: by 2002:a05:6512:104b:b0:542:8d45:cb3e with SMTP id
+ 2adb3069b0e04-5428d45cce2mr7226522e87.18.1736864066034; Tue, 14 Jan 2025
+ 06:14:26 -0800 (PST)
+MIME-Version: 1.0
+References: <20250110123923.270626-1-szemzo.andras@gmail.com> <20250110123923.270626-4-szemzo.andras@gmail.com>
+In-Reply-To: <20250110123923.270626-4-szemzo.andras@gmail.com>
+From: Linus Walleij <linus.walleij@linaro.org>
+Date: Tue, 14 Jan 2025 15:14:14 +0100
+X-Gm-Features: AbW1kvZbpuLPblFhcOWb0pAf-vXkkjGwXrNgVmso7Oy8q5LSTsj10tRLuD4ySG4
+Message-ID: <CACRpkdaz7ABO2QQwv1NFaPm1dOF_maO-bxWQdPNoYAmUXDKCDw@mail.gmail.com>
+Subject: Re: [PATCH 03/12] pinctrl: sunxi: add driver for Allwinner V853.
+To: Andras Szemzo <szemzo.andras@gmail.com>
+Cc: Michael Turquette <mturquette@baylibre.com>, Stephen Boyd <sboyd@kernel.org>, 
+	Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
+	Chen-Yu Tsai <wens@csie.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+	Samuel Holland <samuel@sholland.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
+	Maxime Ripard <mripard@kernel.org>, Vinod Koul <vkoul@kernel.org>, 
+	Kishon Vijay Abraham I <kishon@kernel.org>, Ulf Hansson <ulf.hansson@linaro.org>, 
+	Paul Walmsley <paul.walmsley@sifive.com>, Palmer Dabbelt <palmer@dabbelt.com>, 
+	Albert Ou <aou@eecs.berkeley.edu>, =?UTF-8?Q?Uwe_Kleine=2DK=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
+	Florian Fainelli <florian.fainelli@broadcom.com>, linux-clk@vger.kernel.org, 
+	devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+	linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+	linux-phy@lists.infradead.org, linux-gpio@vger.kernel.org, 
+	linux-pm@vger.kernel.org, linux-riscv@lists.infradead.org
+X-CRM114-Version: 20100106-BlameMichelson ( TRE 0.8.0 (BSD) ) MR-646709E3 
+X-CRM114-CacheID: sfid-20250114_061428_076220_88B55932 
+X-CRM114-Status: GOOD (  10.62  )
+X-BeenThere: linux-phy@lists.infradead.org
+X-Mailman-Version: 2.1.34
+Precedence: list
+List-Id: Linux Phy Mailing list <linux-phy.lists.infradead.org>
+List-Unsubscribe: <https://lists.infradead.org/mailman/options/linux-phy>,
+ <mailto:linux-phy-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-phy/>
+List-Post: <mailto:linux-phy@lists.infradead.org>
+List-Help: <mailto:linux-phy-request@lists.infradead.org?subject=help>
+List-Subscribe: <https://lists.infradead.org/mailman/listinfo/linux-phy>,
+ <mailto:linux-phy-request@lists.infradead.org?subject=subscribe>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Sender: "linux-phy" <linux-phy-bounces@lists.infradead.org>
+Errors-To: linux-phy-bounces+linux-phy=archiver.kernel.org@lists.infradead.org
+
+T24gRnJpLCBKYW4gMTAsIDIwMjUgYXQgMTozOeKAr1BNIEFuZHJhcyBTemVtem8gPHN6ZW16by5h
+bmRyYXNAZ21haWwuY29tPiB3cm90ZToKCj4gVGhlIFY4NTMgZmFtaWx5IGhhcyBtdWx0aXBsZSBw
+YWNrYWdlIHZhcmlhbnRzLCBmcm9tIEJHQSB0byBRRk44OC4KPiBUaGUgbGF0dGVyIGhhcyBjby1w
+YWNrYWdlZCBEUkFNIGFuZCBmZXdlciBwaW5zLCBhbmQgbGVzcyBmZWF0dXJlcyAocGluIG11eGVz
+KS4KPiBBbGwgZmFtaWx5IG1lbWJlcnMgY2FuIGJlIHN1cHBvcnRlZCBieSBhIHNpbmdsZSBkcml2
+ZXIsIGFzIHRoZSBhdmFpbGFibGUgcGlucwo+IHdpdGggYWxsb3dlZCBtdXhlcyBpcyB0aGUgc2Ft
+ZSBhY3Jvc3MgdGhlIGRldmljZXMuCj4KPiBTaWduZWQtb2ZmLWJ5OiBBbmRyYXMgU3plbXpvIDxz
+emVtem8uYW5kcmFzQGdtYWlsLmNvbT4KCkxvb2tzIGdvb2QgdG8gbWUsIHdhaXRpbmcgZm9yIGEg
+cmV2aWV3IG9mIHRoZSBiaW5kaW5ncyBiZWZvcmUgYXBwbHlpbmcsCmJ1dCBJIHNlZSBubyBwcm9i
+bGVtIHdpdGggdGhlIHBhdGNoIGFzIGl0J3MganVzdCB1c2luZyB0aGUgY29yZSBzdW54aQppbmZy
+YXN0cnVjdHVyZSBhbmQgYW55IG1pbm9yIGlzc3VlcyBjYW4gYmUgZml4ZWQgaW4tdHJlZS4KCllv
+dXJzLApMaW51cyBXYWxsZWlqCgotLSAKbGludXgtcGh5IG1haWxpbmcgbGlzdApsaW51eC1waHlA
+bGlzdHMuaW5mcmFkZWFkLm9yZwpodHRwczovL2xpc3RzLmluZnJhZGVhZC5vcmcvbWFpbG1hbi9s
+aXN0aW5mby9saW51eC1waHkK
+

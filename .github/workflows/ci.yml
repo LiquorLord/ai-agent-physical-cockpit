@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Python syntax check
+        run: python -m compileall -q host-tools scripts factory-reverse/scripts
+
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: '.'
+
+      - name: No local absolute paths or hardcoded secrets
+        run: |
+          if grep -rn "file:///home/\|file:///root/\|88888888" \
+            --include="*.md" --include="*.py" --include="*.sh" \
+            --include="*.go" --include="*.c" --include="*.json" \
+            --exclude-dir=.git . ; then
+            echo "::error::Found local absolute path or secret in tracked files"
+            exit 1
+          fi

@@ -1,0 +1,97 @@
+From mboxrd@z Thu Jan  1 00:00:00 1970
+Received: from mail-lj1-f176.google.com (mail-lj1-f176.google.com [209.85.208.176])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 09F7F26AF6
+	for <linux-sunxi@lists.linux.dev>; Thu, 16 Jan 2025 09:09:04 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.176
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1737018546; cv=none; b=LnOhYzys1xJ6JfBjrc9kQpRdGhtIqx5Q93c7k+SK9rhFc2BnrSFCuFEUP+fHHL8DEqgXmVJoGZ9fz1OrcTaENaJzaW7OlnbMTdHV3wQjMTDPOrY0UHCz+WDrkN8tC2dMywAb5IYXMZYK129/VDnNC7AaofEpBm+iasX4eD1lEWY=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1737018546; c=relaxed/simple;
+	bh=6oElNuHGnh2SndiJKSmzP3b2+Y0n7fF/o6Bw/SCWA8s=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=KbG/ZuNObW9gtvZImQVGUNxVFdQHFa7U+vvG4c728ftInklkn5a4/2OrmpcnD/H5SxjKfwxnZGJKeybzaBSSpF0s09CZmMf1ZiydMfpdOm+FvYWj1P15zupnbkI0fsE5krTqOi0eA6itvX8jsWtzWa2NWZ+7jqMvCbjkwsur080=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linaro.org; spf=pass smtp.mailfrom=linaro.org; dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b=SG4veI4H; arc=none smtp.client-ip=209.85.208.176
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linaro.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linaro.org
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b="SG4veI4H"
+Received: by mail-lj1-f176.google.com with SMTP id 38308e7fff4ca-3061513d353so7278561fa.2
+        for <linux-sunxi@lists.linux.dev>; Thu, 16 Jan 2025 01:09:04 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linaro.org; s=google; t=1737018543; x=1737623343; darn=lists.linux.dev;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=6oElNuHGnh2SndiJKSmzP3b2+Y0n7fF/o6Bw/SCWA8s=;
+        b=SG4veI4HygDNoQAnmclfPAccTcnEk/KhvqfSCkuQP/6u6e61cQjcE6cetGZ6Fbe+RQ
+         ci6hmlF17CjIFXRWU7fxpx2vmoNHDWTMPZ8mNOM8h9e5z7paDBsIRf4WPQDPSF4/mtDK
+         djkNzulQiZ4x5Qe16mxmRjjTasOf3rcd8hnLUg9hMSYGpYA3f26dgn9Glz9yuu2RfYcI
+         CF+RUYb45i8eDAB6Pfv12Ot6a1pugErB2AuC3Pp0Zd+qiE1Ed0Ic8pG00lVEuM8Vn5hk
+         3q8iqB/vZ9Iz8/bfKljBq7IWiLYotVytSipDg8c1pcQ17JWfpSmpTkVn2JLaSXVL+DKP
+         kjkA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1737018543; x=1737623343;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=6oElNuHGnh2SndiJKSmzP3b2+Y0n7fF/o6Bw/SCWA8s=;
+        b=gSCSHwc7z3e1WyX86jGg4teWMfZpzzS46+nTmLY1TMB4tGjnmWpRDjanOrL2e6WW4g
+         yy+puNeEPkAKpAwx83Y9pg6FQcguKyvfMn7bdhpfuzS5eijYO6WGMHzVH+Fxt8aLNutJ
+         RU47fNABWiZW7JjWTCGB/Y6PUbWO7AYUc7/6snDaiUy5pdXacn7pQjPIdd63k8eV280I
+         EGzbpqdx0zQns/oTdPnn6VpsfmTi5T1mXO48h+Rzkzf3UNMV3U1vxZLqkt81Mo2KyJDm
+         h9qN8n2ZQrnJX6tdhb9D+Xbq+FehHpfzaVS1RNxwV23qU5veRpfrm2prHTJyIrW5liUP
+         BtZg==
+X-Forwarded-Encrypted: i=1; AJvYcCXnFV0zQICRbor2x6TJULDlR/MnbB18Zchjrgzv550Pq+18p1YnZKM4imyPl3KzJfP1B4uCuA1u2qlbUA==@lists.linux.dev
+X-Gm-Message-State: AOJu0Yz54NQjqD+SkOr2Bj/uM66nbQwRIjY+inY+QgV66G23Gjk1Owlg
+	gU/VelmdhdwXnmBvff7271TP/R7rKh3SGMRnsdCctiGI+ffaj4smsXDqTXjJAmXNwfzkBfVQqQW
+	dFsoynAq8VDkCHF8p+Tzm4qTVPlwKIsRi+AOiNQ==
+X-Gm-Gg: ASbGncukov2hnD4uLlEsP1RJg8OD7f9vG8V/wklr7vmr8nWWVIgQjBFvNE2QEvi/mvm
+	Im8R09bpkdFzcxtuiFU/3/17m3g9PReE2d15W
+X-Google-Smtp-Source: AGHT+IGshDnah7yTVkge7frSzXP6u6YQ9EMlI5n0k71zbBXiVfkDniOTr0RXn5mT0CNZhOwwkIPYxH+G4Ml04S4rkI8=
+X-Received: by 2002:a05:651c:221a:b0:302:1e65:f2ab with SMTP id
+ 38308e7fff4ca-305f45dcb78mr119399301fa.20.1737018543217; Thu, 16 Jan 2025
+ 01:09:03 -0800 (PST)
+Precedence: bulk
+X-Mailing-List: linux-sunxi@lists.linux.dev
+List-Id: <linux-sunxi.lists.linux.dev>
+List-Subscribe: <mailto:linux-sunxi+subscribe@lists.linux.dev>
+List-Unsubscribe: <mailto:linux-sunxi+unsubscribe@lists.linux.dev>
+MIME-Version: 1.0
+References: <20250110123923.270626-1-szemzo.andras@gmail.com> <20250110123923.270626-3-szemzo.andras@gmail.com>
+In-Reply-To: <20250110123923.270626-3-szemzo.andras@gmail.com>
+From: Linus Walleij <linus.walleij@linaro.org>
+Date: Thu, 16 Jan 2025 10:08:52 +0100
+X-Gm-Features: AbW1kvZEtDtDDV1b-JCy06VodlCu92OcKCF4KhRqyAArlBqTeeutEPgAkUkNoec
+Message-ID: <CACRpkdZ6yNvtqjYHaWC6ynP4CdkGSdt5AH9ZrZDqYq=wTehu-g@mail.gmail.com>
+Subject: Re: [PATCH 02/12] dt-bindings: pinctrl: sunxi: add compatible for V853
+To: Andras Szemzo <szemzo.andras@gmail.com>
+Cc: Michael Turquette <mturquette@baylibre.com>, Stephen Boyd <sboyd@kernel.org>, 
+	Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
+	Chen-Yu Tsai <wens@csie.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+	Samuel Holland <samuel@sholland.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
+	Maxime Ripard <mripard@kernel.org>, Vinod Koul <vkoul@kernel.org>, 
+	Kishon Vijay Abraham I <kishon@kernel.org>, Ulf Hansson <ulf.hansson@linaro.org>, 
+	Paul Walmsley <paul.walmsley@sifive.com>, Palmer Dabbelt <palmer@dabbelt.com>, 
+	Albert Ou <aou@eecs.berkeley.edu>, =?UTF-8?Q?Uwe_Kleine=2DK=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
+	Florian Fainelli <florian.fainelli@broadcom.com>, linux-clk@vger.kernel.org, 
+	devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+	linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+	linux-phy@lists.infradead.org, linux-gpio@vger.kernel.org, 
+	linux-pm@vger.kernel.org, linux-riscv@lists.infradead.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+On Fri, Jan 10, 2025 at 1:39=E2=80=AFPM Andras Szemzo <szemzo.andras@gmail.=
+com> wrote:
+
+> Add compatible strings for V853 family pinctrl.
+>
+> Signed-off-by: Andras Szemzo <szemzo.andras@gmail.com>
+
+Patch applied because stand-alone, clear cut and reviewed.
+
+Yours,
+Linus Walleij
+
