@@ -268,7 +268,7 @@ func main() {
 		dsStep = 8 // 1280 / 8 = 160, 720 / 8 = 90
 	}
 
-	log.Printf("[gesture_detector] Starting AGY Visual Gesture Engine on %s (%dx%d)...", devPath, capWidth, capHeight)
+	log.Printf("[gesture_detector] Starting AI-Agent Visual Gesture Engine on %s (%dx%d)...", devPath, capWidth, capHeight)
 
 	var fd int
 	var err error

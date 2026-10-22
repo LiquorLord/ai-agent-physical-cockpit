@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-AGY Physical Cockpit - Host Global Keystroke Daemon
-全志 V553 物理级座舱宿主机全局按键注入守护进程 (英汉双语 / Bilingual)
+AI-Agent Physical Cockpit - Host Global Keystroke Daemon
+Allwinner V553 physical cockpit host-side global key injection daemon
 
 Receives hardware touch button events from V553 over USB CDC-NCM (UDP :8888)
 and injects real keystrokes directly into the active terminal/editor window
@@ -117,7 +117,7 @@ def inject_keystroke(action):
 
 def main():
     log("=================================================================")
-    log(" AGY Physical Cockpit - Host Keystroke Injection Daemon")
+    log(" AI-Agent Physical Cockpit - Host Keystroke Injection Daemon")
     log(f" Listening on 0.0.0.0:{PORT} (UDP) | DISPLAY={get_display()}")
     log("=================================================================")
 

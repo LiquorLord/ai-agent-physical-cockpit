@@ -4,7 +4,7 @@
  * Emulates a native USB Display Adapter over USB-C using FunctionFS
  * Supports 1600x600 BOE MIPI Display with zero-copy hardware blitting
  *
- * English & Chinese Bilingual Standard / 英汉双语规范
+ * English standard
  */
 
 #include <stdio.h>
@@ -633,7 +633,7 @@ int main(int argc, char **argv) {
 
     printf("========================================================\n");
     printf("[*] Starting V553 GUD USB Display Hardware Emulator\n");
-    printf("[*] 启动全志 V553 硬件级 USB 显示卡仿真守护进程 (GUD Native)\n");
+    printf("[*] Starting Allwinner V553 hardware-level USB display emulation daemon (GUD Native)\n");
     printf("========================================================\n");
 
     queue_init();

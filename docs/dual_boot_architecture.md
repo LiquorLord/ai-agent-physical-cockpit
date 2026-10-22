@@ -1,11 +1,11 @@
-# AGY Physical Cockpit Dual-Boot Architecture
+# AI-Agent Physical Cockpit Dual-Boot Architecture
 **Allwinner V553 (sun8iw21) – eGON BROM Interception & Non-Intrusive Dual-Boot**
 
 [English](dual_boot_architecture.md) | [简体中文](dual_boot_architecture_zh.md)
 
 | **Version** | **Date**       | **Author** | **Status** |
 |-------------|----------------|------------|------------|
-| 1.0         | 2026-10-13     | AGY Team   | Approved   |
+| 1.0         | 2026-10-13     | AI-Agent Team   | Approved   |
 
 ---
 
@@ -21,7 +21,7 @@
 
 ## 1. Executive Summary & Dual-Boot Philosophy
 
-The AGY Physical Cockpit implements a **100% non-intrusive dual-boot** mechanism on the Allwinner V553 (sun8iw21) SoC:
+The AI-Agent Physical Cockpit implements a **100% non-intrusive dual-boot** mechanism on the Allwinner V553 (sun8iw21) SoC:
 - **MicroSD inserted**: The system boots a custom modern AI-smart terminal OS (Linux with USB Composite Gadget, touch UI, edge vision).
 - **MicroSD removed**: The system boots the **100% unadulterated factory dashcam firmware** (`cdr` recording, wireless Apple CarPlay / HiCar).
 
@@ -107,7 +107,7 @@ The Allwinner V553 integrates a **sun8i-wdt** hardware watchdog timer. In factor
 
 ## 6. Open-Source User Experience
 
-The AGY Physical Cockpit dual-boot system is designed for **zero-soldering, zero-risk** developer use:
+The AI-Agent Physical Cockpit dual-boot system is designed for **zero-soldering, zero-risk** developer use:
 
 - **No hardware modification:** The MicroSD slot is the only interface needed.
 - **No firmware flashing required:** The custom OS lives entirely on the MicroSD.

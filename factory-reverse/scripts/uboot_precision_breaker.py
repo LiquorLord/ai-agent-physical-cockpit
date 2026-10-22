@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Precision U-Boot Breaker & Root Shell Injector for Allwinner V553
-全志 V553 精准时延 U-Boot 拦截与 Root 提权注入器
+Allwinner V553 precision-delay U-Boot interceptor and root privilege injector
 """
 
 import sys
@@ -33,10 +33,10 @@ def main():
     set_raw(fd)
 
     print("=" * 65)
-    print(" [*] Precision U-Boot Breaker Ready / 精准时延 U-Boot 拦截器就绪")
+    print(" [*] Precision U-Boot Breaker Ready")
     print(" [*] Strategy: Silence in Boot0 (0-1.0s) -> High-speed space in U-Boot")
     print(" [*] >>> PLEASE INSERT THE USB CABLE NOW! <<<")
-    print(" [*] >>> 请现在插上 USB 数据线！ <<<")
+    print(" [*] >>> Please plug in the USB data cable now! <<<")
     print("=" * 65)
     sys.stdout.flush()
 
@@ -93,7 +93,7 @@ def main():
 
     if interrupted:
         print("\n\n" + "=" * 65)
-        print(" [!!!] SUCCESS! U-BOOT INTERRUPTED! / 成功拦截进入 U-Boot！")
+        print(" [!!!] SUCCESS! U-BOOT INTERRUPTED!")
         print("=" * 65)
         sys.stdout.flush()
 
@@ -120,7 +120,7 @@ def main():
                     sys.stdout.buffer.flush()
                     if b"/ #" in data or b"/bin/sh" in data or b"#" in data:
                         print("\n\n" + "=" * 65)
-                        print(" [!!!] ROOT SHELL CAPTURED! / 免密 ROOT SHELL 注入成功！")
+                        print(" [!!!] ROOT SHELL CAPTURED!")
                         print("=" * 65)
                         os.write(fd, b"\r\nid; mount -o remount,rw /; cat /proc/partitions\r\n")
                         break

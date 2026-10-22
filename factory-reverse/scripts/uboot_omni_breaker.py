@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Omni-Key U-Boot Breaker & Analyzer
-全方位多按键 U-Boot 拦截与启动分析器
+Omni-key multi-button U-Boot interceptor and boot analyzer
 """
 
 import sys
@@ -33,10 +33,10 @@ def main():
     termios.tcflush(fd, termios.TCIOFLUSH)
 
     print("=" * 65)
-    print(" [*] Omni-Key U-Boot Breaker Running / 全按键 U-Boot 拦截器运行中")
+    print(" [*] Omni-Key U-Boot Breaker Running")
     print(" [*] Sending alternating keys: Space, '2', Enter, 's', Ctrl+C, Esc...")
     print(" [*] >>> PLEASE UNPLUG TYPE-C, WAIT 3 SECONDS, AND RE-PLUG NOW! <<<")
-    print(" [*] >>> 请现在拔下 Type-C，等待 3 秒，然后重新插上！ <<<")
+    print(" [*] >>> Please unplug Type-C now, wait 3 seconds, then plug it back in! <<<")
     print("=" * 65)
     sys.stdout.flush()
 
@@ -70,7 +70,7 @@ def main():
 
     if interrupted:
         print("\n\n" + "=" * 65)
-        print(" [!!!] U-BOOT INTERRUPTED! / 拦截成功！已进入 U-Boot！")
+        print(" [!!!] U-BOOT INTERRUPTED!")
         print("=" * 65)
         # Test command
         time.sleep(0.1)

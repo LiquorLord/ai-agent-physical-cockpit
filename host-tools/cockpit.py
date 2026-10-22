@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-AGY Physical Cockpit - Unified Executive CLI
-全志 V553 物理级专属座舱一键式统一入口 (英汉双语 / Bilingual)
+AI-Agent Physical Cockpit - Unified Executive CLI
+Allwinner V553 physical cockpit one-shot unified entrypoint
 
 Integrates:
 1. Low-latency Dual-Zone display streaming (1200x600 viewport)
@@ -115,7 +115,7 @@ def configure_i3_window(win_name):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="AGY Physical Cockpit - Unified Executive Companion",
+        description="AI-Agent Physical Cockpit - Unified Executive Companion",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples:
   ./cockpit                     # Run 'agy' AI assistant in dedicated 1200x600 window streamed to physical display
@@ -143,7 +143,7 @@ def main():
         return
 
     print("=" * 65)
-    print("  \033[1;32mAGY PHYSICAL COCKPIT\033[0m — Zero-Typing Developer Console")
+    print("  \033[1;32mAI-AGENT PHYSICAL COCKPIT\033[0m — Zero-Typing Developer Console")
     print("  Allwinner V553 (1600x600 BOE Display • GT911 Capacitive Touch)")
     print("  Tactile Actions: [PROCEED] [GRILL-ME] [PLAN] [STOP]")
     print("=" * 65)
@@ -163,7 +163,7 @@ def main():
 
     if not args.inline and not args.test and not args.display and not args.window:
         # Dedicated Desktop Cockpit Window Mode (Default)
-        win_title = "AGY-Cockpit"
+        win_title = "AI-Agent-Cockpit"
         agent_exec = [sys.executable, AGENT_SCRIPT]
         if args.profile:
             agent_exec.extend(["-p", args.profile])

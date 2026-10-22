@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Target Device Serial Shell Controller / 目标设备串口交互控制器
+Target Device Serial Shell Controller
 """
 
 import sys

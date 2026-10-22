@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Direct Hardware SPI JEDEC Probe for Allwinner V853 via FEL
-通过 FEL 直接硬件寄存器探测 V853 SPI Flash JEDEC ID
+Probe the V853 SPI Flash JEDEC ID via FEL direct hardware register access
 """
 
 import subprocess

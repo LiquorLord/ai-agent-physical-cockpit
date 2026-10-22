@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 Allwinner UART0 Monitor & Shell Tool
-全志 UART0 串口监控与控制台工具
-Standard library only / 仅依赖 Python 标准库 (termios, fcntl, select)
+Allwinner UART0 serial monitor and console tool
+Standard library only (termios, fcntl, select)
 """
 
 import sys
@@ -34,10 +34,10 @@ def main():
     baud = int(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_BAUD
 
     if not os.path.exists(port):
-        print(f"[-] Serial port {port} not found! / 未找到串口设备 {port}")
+        print(f"[-] Serial port {port} not found!")
         sys.exit(1)
 
-    print(f"[+] Opening {port} at {baud} baud... / 正在打开串口 {port}，波特率 {baud}...")
+    print(f"[+] Opening {port} at {baud} baud...")
 
     # Open serial port
     fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
@@ -57,7 +57,7 @@ def main():
 
     log_filename = f"uart_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     print(f"[+] Logging serial output to: {log_filename}")
-    print("[+] Press Ctrl+C to exit. / 按 Ctrl+C 退出。")
+    print("[+] Press Ctrl+C to exit.")
     print("=" * 60)
 
     with open(log_filename, "ab") as log_file:
@@ -77,7 +77,7 @@ def main():
                         if user_input:
                             os.write(fd, user_input)
         except KeyboardInterrupt:
-            print("\n[+] Exiting UART monitor. / 退出串口监控。")
+            print("\n[+] Exiting UART monitor.")
         finally:
             os.close(fd)
 

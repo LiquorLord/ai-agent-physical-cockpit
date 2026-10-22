@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * gud_turbo.c - Live Host-Side GUD USB Display Damage-Shrinking Accelerator
- * 全志 V553 GUD USB 显卡宿主机端实时脏矩形裁剪加速内核模块 (免重启 Xorg 热升级)
+ * Allwinner V553 GUD USB display host-side realtime dirty-rectangle clipping acceleration kernel module (hot-upgrade without restarting Xorg)
  *
- * Features / 核心特性:
- * 1. Bounding-Box Damage Shrinking (脏矩形像素级精确裁剪):
+ * Features:
+ * 1. Bounding-Box Damage Shrinking (pixel-accurate dirty-rectangle clipping):
  *    Xorg PRIME page-flips pass full-screen (1200x600) damage on every update.
  *    This kprobe intercepts gud_flush_damage(), diffs the XRGB8888 shadow_buf
  *    against the previous frame at 64-bit stride in <0.08ms on x86_64, and shrinks
  *    struct drm_rect *damage to the exact changed bounding box (e.g. 12x24 px when typing).
- * 2. Strict EP0-to-EP1 Flow Control (STATUS_ON_SET 硬件流控握手机制):
+ * 2. Strict EP0-to-EP1 Flow Control (STATUS_ON_SET hardware flow-control handshake):
  *    Enforces GUD_DISPLAY_FLAG_STATUS_ON_SET (gdrm->flags = 1) and uncompressed
  *    raw RGB565 (gdrm->compression = 0) so the host never blasts EP1 Bulk OUT
  *    packets before the V553 sunxi-musb controller has queued its RX request.

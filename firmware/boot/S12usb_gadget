@@ -1,7 +1,7 @@
 #!/bin/sh
 # ==============================================================================
 # S12usb_gadget - On-boot GUD Display + CDC-NCM Composite Gadget Launcher
-# 全志 V553 开机自启硬件级 USB 显卡与高速网络复合设备服务
+# Allwinner V553 on-boot hardware-level USB display and high-speed network composite device service
 # ==============================================================================
 
 case "$1" in

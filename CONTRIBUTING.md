@@ -1,13 +1,13 @@
 # Contributing
 
-Thanks for your interest in contributing to AGY Physical Cockpit!
+Thanks for your interest in contributing to AI-Agent Physical Cockpit!
 
 # Getting Started
 
 1. Fork the repository to your GitHub account.
 2. Clone your forked repository:
    ```
-   git clone https://github.com/yourusername/AGY-Physical-Cockpit.git
+   git clone https://github.com/yourusername/AI-Agent-Physical-Cockpit.git
    ```
 
 # Development Setup
