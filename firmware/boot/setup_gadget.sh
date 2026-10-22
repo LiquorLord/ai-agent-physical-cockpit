@@ -1,7 +1,12 @@
 #!/bin/sh
 # ==============================================================================
-# AI-Agent Physical Cockpit: USB Composite Gadget ConfigFS Driver
-# Allwinner V553 physical cockpit driverless USB composite gadget configuration (NCM Ethernet + HID keyboard)
+# AI-Agent Physical Cockpit: LEGACY USB Composite Gadget (CDC-NCM + HID + ADB)
+# ------------------------------------------------------------------------------
+# NOTE: This is the FORMER CDC-NCM networking route, kept for debugging only.
+# It is NOT invoked by any boot script. The V553 USB OTG controller exposes only
+# 4 endpoints, so GUD + HID + NCM cannot coexist; the production path is the GUD
+# display + HID keyboard composite configured by switch_to_gud.sh. (NCM streamed
+# video faster than GUD but required host-side decoding software.)
 # ==============================================================================
 
 GADGET_DIR="/sys/kernel/config/usb_gadget/g1"

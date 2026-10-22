@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 inspect_screen.py - Autonomous Optical Screen Inspector for Allwinner V553 Cockpit
-Connects to the V553 target over High-Speed USB SSH (192.168.100.1), triggers a hardware V4L2
+Connects to the V553 target over High-Speed USB SSH (192.168.10.1), triggers a hardware V4L2
 frame capture on /dev/video12 (the camera facing the 10.26" screen), transfers the raw NV12
 frame to host, converts to high-quality JPEG and contrast-enhanced inspection assets, displays
 an ANSI TrueColor preview, and opens the asset via host desktop viewer (Rule 7 / hardware-inspector).
@@ -13,7 +13,7 @@ import subprocess
 import numpy as np
 from PIL import Image, ImageOps
 
-TARGET_IP = "192.168.100.1"
+TARGET_IP = "192.168.10.1"
 CAPTURE_CMD = "/usr/bin/v4l2_probe /dev/video12"
 RAW_PATH = "/tmp/screen_capture.nv12"
 JPG_PATH = "/tmp/screen_capture.jpg"

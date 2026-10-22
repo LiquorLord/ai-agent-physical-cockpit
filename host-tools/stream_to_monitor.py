@@ -38,7 +38,7 @@ def setup_forwarding(port):
     subprocess.run(["adb", "forward", f"tcp:{port}", f"tcp:{port}"], check=True)
     print(f"[*] Port forwarding verified: localhost:{port} -> device:{port}")
 
-def stream_x11(target="192.168.100.1", display=":1", x_offset=0, y_offset=0, res=DUAL_RES, fps=DEFAULT_FPS, port=DUAL_PORT):
+def stream_x11(target="192.168.10.1", display=":1", x_offset=0, y_offset=0, res=DUAL_RES, fps=DEFAULT_FPS, port=DUAL_PORT):
     """
     Stream X11 desktop region directly to the USB monitor
     Stream a selected region of the local X11 desktop to the USB display in realtime
@@ -62,7 +62,7 @@ def stream_x11(target="192.168.100.1", display=":1", x_offset=0, y_offset=0, res
     except KeyboardInterrupt:
         print("\n[*] Streaming stopped by user.")
 
-def stream_test_pattern(target="192.168.100.1", res=DUAL_RES, fps=DEFAULT_FPS, port=DUAL_PORT):
+def stream_test_pattern(target="192.168.10.1", res=DUAL_RES, fps=DEFAULT_FPS, port=DUAL_PORT):
     """
     Stream live dynamic test pattern for latency & FPS benchmarking
     Emit a dynamic test pattern to benchmark framerate and low latency
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     parser.add_argument("--x", type=int, default=0, help="Screen capture X offset")
     parser.add_argument("--y", type=int, default=0, help="Screen capture Y offset")
     parser.add_argument("--fps", type=int, default=DEFAULT_FPS, help="Stream target framerate")
-    parser.add_argument("--target", default="192.168.100.1", help="Target V553 device IP (default: 192.168.100.1)")
+    parser.add_argument("--target", default="192.168.10.1", help="Target V553 device IP (default: 192.168.10.1)")
     parser.add_argument("--port", type=int, default=None, help="Custom streaming port override")
     args = parser.parse_args()
 

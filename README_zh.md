@@ -27,15 +27,17 @@
 - 🖥️ **超宽 10.26" 触摸屏 (1600x600)**：
   - 4 路 MIPI-DSI 高刷新率条形显示屏 (`wtl1026boe2l`)，配备 Goodix GT911 电容式触摸屏。
   - 三区 HUD 布局：实时思维链、活动代码差异 / 计划工件和物理控制触控按钮。
-- 🔌 **通用无人驾驶 USB 复合设备**：
-  - 通过 USB Type-C 枚举为 **USB CDC-NCM 以太网**（192.168.10.x，约 480Mbps）+ **USB HID 键盘** (`/dev/hidg0`)。
-  - 原生支持 **Linux、macOS 和 Windows**，无需安装第三方驱动程序。
+- 🖥️ **免驱 USB 显示器 + 键盘（GUD + HID）**：
+  - 通过 USB Type-C 枚举为 **GUD（通用 USB 显示器）**（`0x1d50:0x614d`）+ **USB HID 键盘**（`/dev/hidg0`）复合设备。
+  - 主机把它识别为一台原生 1600×600 显示器加一块 USB 键盘 —— **Linux、macOS 和 Windows** 原生支持，无需第三方驱动或主机端流媒体软件。
 - 🖲️ **零摩擦物理触控控制**：
   - 屏幕上的大按钮：`🟢 继续`（注入 Enter / `y`），`🛑 停止`（注入 `Ctrl+C`）和 `📋 计划`（注入 `/plan`）。
   - 在工作流程中保持双手无需输入确认信息。
-- 👁️ **边缘多模态 AI**：
-  - **视觉引擎**：实时板载摄像头手势跟踪（👌 OK -> 继续，✌️ V -> 批准/计划，✋ Palm -> 紧急停止）。
-  - **双层计算**：设备上的 Cortex-A7 NEON 推理，或混合流式传输到本地高性能节点。
+- 👁️ **边缘多模态 AI（路线图 / 已归档）**：
+  - **手势引擎（已归档）**：一个基于 V4L2 YCbCr 肤色分割的手势分类器（`firmware/apps/gesture_detector.go`）曾在工厂 Linux 4.9 内核上验证（👌 / ✌️ / ✊ 手势）。由于主线 6.12 内核尚无摄像头（CSI）驱动，它已被**归档** —— 参见 `docs/GESTURE_ENGINE_ARCHIVE*.md`。
+  - **双层计算（规划中）**：设备端 Cortex-A7 NEON 推理，或混合流式传输到本地高性能节点。
+
+> **为什么用 GUD + HID 而不是 CDC-NCM：** 早期的 CDC-NCM 虚拟以太网方案将显示器当作视频流来传输，速度远快于 GUD。它被退役是因为：(1) V553 的 USB OTG 控制器仅暴露 **4 个端点**，GUD + HID + NCM 无法共存；(2) NCM 需要主机端软件（`stream_to_monitor.py`、`cockpit.py`）解码视频流 —— 而 GUD + HID 直接以普通显示器和键盘的形式出现，无需任何主机端软件。遗留的 NCM/ADB 脚本保留在 `firmware/boot/setup_gadget.sh` 和 `host-tools/` 中，仅用于调试。
 
 ---
 
@@ -102,9 +104,9 @@
 | **MicroSD** | 最高 128 GB | SDC0 接口（BROM 优先启动设备）|
 | **显示屏** | 10.26 英寸 IPS 条形屏 | BOE `wtl1026boe2l`，1600x600，4 路 MIPI-DSI，DCLK 53.0MHz |
 | **触摸** | 电容多点触控 | Goodix GT911 在 I2C1 上 |
-| **摄像头** | MIPI CSI 摄像头 | `/dev/video0` 前置广角 |
-| **音频** | 麦克风 & 扬声器 | 板载 MEMS 麦克风和音频编解码器 |
-| **USB** | Type-C USB 2.0 OTG | 高速 480Mbps，ConfigFS 复合设备（NCM+HID）|
+| **摄像头** | MIPI CSI（主线未接线） | 仅在工厂 Linux 4.9 下有 `/dev/video0`；主线 CSI 驱动尚未就绪 |
+| **音频** | DMIC（仅驱动） | 已启用 `sound_dmic` ALSA 声卡；暂无麦克风应用 / 无扬声器输出 |
+| **USB** | Type-C USB 2.0 OTG | 高速 480Mbps，GUD 显示器 + HID 键盘复合设备 |
 | **UART** | 调试串行端口 | PCB 测试点 `tx0`，`rx0`，`GND` @ 115200 8N1 |
 | **板子 ID** | `f900x-v2.2` | `km2026240602026.01.03jdh` |
 
@@ -184,15 +186,23 @@ host-tools/update_kernel_sd.sh      # 自动检测 SD 启动分区
 
 ---
 
-## 8. 主机 PC 流式传输
+## 8. 主机 PC 使用（GUD 显示器 + HID）
 
-使用 USB Type-C 线缆将设备连接到您的 PC：
+使用 USB Type-C 线缆将设备连接到 PC。在最终（主线 6.12）固件上，设备枚举为
+**原生 GUD USB 显示器 + HID 键盘** —— 无需主机端流媒体软件：
+
+- 显示器作为标准显示器出现（Linux 下如 `/dev/dri/card0`，macOS / Windows 下为副屏）。
+- Action Bar 通过 HID 键盘接口直接注入按键。
+
+### 8.1 遗留流式传输工具（早期 CDC-NCM / ADB 路线）
+
+以下工具属于早期的 CDC-NCM / ADB 流式传输路线，仅保留用于历史参考和底层调试：
 
 ```bash
-# 使用高速 30fps 流测试显示输出
+# 使用高速 30fps 流测试显示输出（遗留 NCM/ADB 路线）
 ./host-tools/stream_to_monitor.py --test --fps 30
 
-# 将活动的 X11 桌面 / 窗口流式传输到 1600x600 屏幕
+# 将活动的 X11 桌面 / 窗口流式传输到 1600x600 屏幕（遗留路线）
 ./host-tools/stream_to_monitor.py --display :1.0 --fps 30
 
 # 统一 CLI（双区流 + PTY shell + 触摸注入）

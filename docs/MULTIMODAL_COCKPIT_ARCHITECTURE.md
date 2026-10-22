@@ -6,6 +6,12 @@
 
 ---
 
+> **⚠️ Status note — this document describes the design vision; not everything below is
+> implemented in the current code.** What ships today is the **GUD display + HID keyboard**
+> composite gadget (2 USB functions) plus the DRM/KMS display and GT911 touchscreen. The
+> CDC-NCM channel, cameras/V4L2 gesture engine, microphone/KWS, 5 GHz Wi-Fi and BLE are
+> **roadmap / former-route items** and are marked accordingly in the text.
+
 ## 1. Architectural Vision & Core Design Consensus
 
 Following the `/grill-me` architectural review, the Allwinner V553 (`sun8iw21`) platform has transitioned from a passive dashcam/monitor into an **Edge-AI Multimodal Companion Terminal (AI-Agent Physical Cockpit)**.
@@ -33,6 +39,10 @@ The architecture abandons software-level screen scraping, adopting **Native Hard
 ```
 
 ---
+
+**Legend — shipped vs vision:**
+- ✅ **Shipped (in code):** GUD display (`0x1d50:0x614d`) + HID keyboard + local Action Bar + GT911 touch.
+- 🔮 **Vision / roadmap (not yet in code):** HID multi-touch passthrough, CDC-NCM (former route — retired: 4-endpoint limit + host software), cameras + V4L2 gesture, microphone/KWS, 5 GHz Wi-Fi, BLE.
 
 ## 2. Bus Bandwidth & Channel Allocation First Principles
 
@@ -62,8 +72,9 @@ To eliminate USB bus contention and prevent typing latency:
    - Frames remain entirely inside V553 Cortex-A7 / NPU for local gesture recognition (✌️/👌/✊) and gaze tracking; only small event commands are dispatched upstream.
 4. **Voice Audio (Edge-AI Priority, Zero Bus Overhead)**:
    - Local keyword spotting (KWS) on audio array, freeing USB bus and host CPU.
-5. **Network & Control Channel (CDC-NCM Ethernet)**:
-   - Preserves `192.168.100.1` virtual network for ADB, root SSH, and telemetry.
+5. **Network & Control Channel (CDC-NCM Ethernet) — former route, not shipped**:
+   - An earlier CDC-NCM (`usb0`, `192.168.10.1`) route provided ADB / SSH / telemetry and streamed video faster than GUD.
+   - Retired because (a) the V553 USB OTG exposes only **4 endpoints**, so GUD + HID + NCM cannot coexist, and (b) NCM required host-side decoding software. The final device uses GUD + HID only.
 
 ---
 
@@ -71,7 +82,8 @@ To eliminate USB bus contention and prevent typing latency:
 
 1. **Wired Workstation Mode (Connected via USB-C)**:
    - Delivers unified power and data.
-   - Auto-activates GUD Display + HID Touch + CDC-NCM Ethernet.
+   - Auto-activates the **GUD Display + HID Keyboard** composite gadget (shipped today).
+   - (Vision: also HID multi-touch + CDC-NCM Ethernet — the latter was retired for the 4-endpoint / host-software reasons above.)
    - Recognized natively by host Linux as `/dev/dri/card0` (1600x600).
 2. **Wireless Standalone Mode (Power Bank / Wall Charger)**:
    - When USB data enumeration times out (power-only connection);
@@ -89,5 +101,5 @@ To eliminate USB bus contention and prevent typing latency:
 | :--- | :--- | :--- | :--- |
 | `gud_v553` | [`firmware/apps/gud_v553.c`](../firmware/apps/gud_v553.c) | GUD protocol handling, damage rect rotation, fb blitting | `/dev/ffs-gud` + `/dev/fb0` |
 | `touch_cockpit` | [`firmware/apps/touch_cockpit.go`](../firmware/apps/touch_cockpit.go) | Goodix GT911 touch interception, Action Bar rendering | `/dev/input/event0` |
-| `gesture_detector`| [`firmware/apps/gesture_detector.go`](../firmware/apps/gesture_detector.go)| Local 30fps gesture classification and gaze detection | `/dev/video12` |
+| `gesture_detector` *(archived)* | [`firmware/apps/gesture_detector.go`](../firmware/apps/gesture_detector.go)| Local 30fps gesture classification (factory Linux 4.9 only; not launched on mainline) | `/dev/video0` / `/dev/video8` |
 | `switch_to_gud` | [`firmware/apps/switch_to_gud.sh`](../firmware/apps/switch_to_gud.sh) | Composite gadget management, UDC controller binding | `/sys/kernel/config/usb_gadget` |

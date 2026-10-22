@@ -132,14 +132,18 @@
 ### 6.1 USB 2.0 控制器特性
 - 控制器 IP：全志 Sunxi Musb 高速 OTG 控制器
 - UDC 驱动标识：`4100000.udc-controller`
-- 3-in-1 复合外设配置：
-  - **ADB (Android 调试桥)**：厂商 ID `0x18d1`，产品 ID `0xd002`（FunctionFS `ffs.adb`）
-  - **CDC-NCM (高速虚拟网卡)**：网络接口 `usb0`（默认设备 IP：`192.168.100.1/24`）
+- **当前交付的复合外设（`switch_to_gud.sh`）**：
+  - **GUD (通用 USB 显示器)**：厂商 ID `0x1d50`，产品 ID `0x614d`（FunctionFS `ffs.gud`）
   - **USB HID 模拟键盘**：字符设备 `/dev/hidg0`，支持按键扫描码直通注入
+- **历史路线（仅调试保留，开机未绑定）**：
+  - **ADB (Android 调试桥)**：厂商 ID `0x18d1`，产品 ID `0xd002`（FunctionFS `ffs.adb`）
+  - **CDC-NCM (高速虚拟网卡)**：网络接口 `usb0`（设备 IP：`192.168.10.1/24`）
+  - V553 的 USB OTG 控制器仅暴露 **4 个端点**，GUD + HID + NCM 无法共存。NCM 流式传输视频比 GUD 更快，但需要主机端软件 —— 因此才改为 GUD + HID 方案。
 
 ### 6.2 无线网络模组（爱科微 ATBM6165）
 - **Wi-Fi**：802.11 b/g/n 1T1R @ 2.4 GHz（SDIO 接口，内核驱动模块 `atbm6165.ko`）
 - **蓝牙**：BT 4.2 / BLE（UART 接口，内核模块 `hci_uart.ko`，固件文件 `atbm6062_fw.bin`）
+- **主线状态**：板级 DTS 声明了 `mmc1` SDIO 槽（Wi-Fi）与 UART3 蓝牙节点，且已启用 `CONFIG_BT_HCIUART` —— 但 `CONFIG_WLAN` **未设置**，开机也未启动任何 Wi-Fi/BT 用户态服务。无线子系统处于 bring-up 进行中，尚未可用。
 
 ---
 
