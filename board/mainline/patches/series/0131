@@ -1,0 +1,114 @@
+From mboxrd@z Thu Jan  1 00:00:00 1970
+Return-Path: <linux-phy-bounces+linux-phy=archiver.kernel.org@lists.infradead.org>
+X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
+	aws-us-west-2-korg-lkml-1.web.codeaurora.org
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.lore.kernel.org (Postfix) with ESMTPS id 35220C02183
+	for <linux-phy@archiver.kernel.org>; Tue, 14 Jan 2025 19:54:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=lists.infradead.org; s=bombadil.20210309; h=Sender:
+	Content-Transfer-Encoding:Content-Type:List-Subscribe:List-Help:List-Post:
+	List-Archive:List-Unsubscribe:List-Id:In-Reply-To:MIME-Version:References:
+	Message-ID:Subject:Cc:To:From:Date:Reply-To:Content-ID:Content-Description:
+	Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:
+	List-Owner; bh=B0Kl4biUEVxgz3Hfmur0wKa3tkFlCvJvKLAl2Iscddw=; b=mCbZPqHoilXgov
+	GRXJinAVYD6zcYmdK4ovDzYkITFfeGrN2U9jT27QsrDvtP9yfvZH9zo0+6Ww2wDuCdMv/tAJNwpjs
+	AlC22YTXdsvBXYeR6nbIx7xyAQPbRE71ZdzHtgZpzv8dv3JjGBUzOL0vFjJEqiEnFB7Xn8HI1xmSe
+	0ePow0FORsHzp0Mk+Z5NMQdUhKm80uYzc2ee5iffzMUxET/Ac4PnFO1kNfwoAv46LUvOJlO4Shnqq
+	7ppX+QmS/oQVqq1oRW/78pXv4Of7Gm4GknOGy6fHwW9c+OjSZaLrv0fXsxDxBLDPuqVMmXgLwygD/
+	xUvoAbkfN+4nZ4HPkQkw==;
+Received: from localhost ([::1] helo=bombadil.infradead.org)
+	by bombadil.infradead.org with esmtp (Exim 4.98 #2 (Red Hat Linux))
+	id 1tXmzR-00000009aeE-16RF;
+	Tue, 14 Jan 2025 19:54:17 +0000
+Received: from nyc.source.kernel.org ([2604:1380:45d1:ec00::3])
+	by bombadil.infradead.org with esmtps (Exim 4.98 #2 (Red Hat Linux))
+	id 1tXmy8-00000009aVf-3YQw;
+	Tue, 14 Jan 2025 19:52:58 +0000
+Received: from smtp.kernel.org (transwarp.subspace.kernel.org [100.75.92.58])
+	by nyc.source.kernel.org (Postfix) with ESMTP id DAB92A41B20;
+	Tue, 14 Jan 2025 19:51:07 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 64D23C4CEDD;
+	Tue, 14 Jan 2025 19:52:55 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1736884375;
+	bh=tFzCEIztKEZ3kBKK0bFyC/nzjd+01xcbW/7eoFlG6DY=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=AkcU8CfpStzYxO1CHv2BL2eUQ9p0pg4vOUNoINSSBu9JtBLB8yu6XNT9Yndv2NYbX
+	 HkfswsOjGivQ3792WWlUN9ARVj21u91EVGmVaWk33zl6CJEUOqlblpKKfLotxmAFn0
+	 lD9TDtp8H39JrkR2RU/IJoXwzCshjPCxb0WFazxL3ogASL88nKodW4/n44mHgbOagk
+	 wlFcwm72u8Y02A9zJONQoBA3J8HJC6Nf47Rj/6uRRcUnGXqNU+CXB0I34gdbijS4fN
+	 Z5FtFaLfxG6yyPaZYueo4KWAzWC2WVMZV6dILP5avypfnpCK9M/bGlOyCNaGr/SMbN
+	 vOlo2ZPIp7z8Q==
+Date: Tue, 14 Jan 2025 13:52:54 -0600
+From: "Rob Herring (Arm)" <robh@kernel.org>
+To: Andras Szemzo <szemzo.andras@gmail.com>
+Cc: Stephen Boyd <sboyd@kernel.org>,
+	Florian Fainelli <florian.fainelli@broadcom.com>,
+	linux-sunxi@lists.linux.dev,
+	Krzysztof Kozlowski <krzk+dt@kernel.org>,
+	Michael Turquette <mturquette@baylibre.com>,
+	linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org,
+	Uwe =?iso-8859-1?Q?Kleine-K=F6nig?= <u.kleine-koenig@baylibre.com>,
+	Palmer Dabbelt <palmer@dabbelt.com>,
+	Paul Walmsley <paul.walmsley@sifive.com>,
+	Conor Dooley <conor+dt@kernel.org>, linux-gpio@vger.kernel.org,
+	Maxime Ripard <mripard@kernel.org>,
+	Kishon Vijay Abraham I <kishon@kernel.org>,
+	Ulf Hansson <ulf.hansson@linaro.org>,
+	Linus Walleij <linus.walleij@linaro.org>,
+	linux-phy@lists.infradead.org, Albert Ou <aou@eecs.berkeley.edu>,
+	linux-pm@vger.kernel.org, Vinod Koul <vkoul@kernel.org>,
+	linux-clk@vger.kernel.org, Philipp Zabel <p.zabel@pengutronix.de>,
+	Chen-Yu Tsai <wens@csie.org>, Samuel Holland <samuel@sholland.org>,
+	linux-kernel@vger.kernel.org,
+	Jernej Skrabec <jernej.skrabec@gmail.com>,
+	linux-riscv@lists.infradead.org
+Subject: Re: [PATCH 02/12] dt-bindings: pinctrl: sunxi: add compatible for
+ V853
+Message-ID: <173688437416.1619259.7363940656037127304.robh@kernel.org>
+References: <20250110123923.270626-1-szemzo.andras@gmail.com>
+ <20250110123923.270626-3-szemzo.andras@gmail.com>
+MIME-Version: 1.0
+Content-Disposition: inline
+In-Reply-To: <20250110123923.270626-3-szemzo.andras@gmail.com>
+X-CRM114-Version: 20100106-BlameMichelson ( TRE 0.8.0 (BSD) ) MR-646709E3 
+X-CRM114-CacheID: sfid-20250114_115256_956828_E678E655 
+X-CRM114-Status: UNSURE (   8.55  )
+X-CRM114-Notice: Please train this message.
+X-BeenThere: linux-phy@lists.infradead.org
+X-Mailman-Version: 2.1.34
+Precedence: list
+List-Id: Linux Phy Mailing list <linux-phy.lists.infradead.org>
+List-Unsubscribe: <https://lists.infradead.org/mailman/options/linux-phy>,
+ <mailto:linux-phy-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-phy/>
+List-Post: <mailto:linux-phy@lists.infradead.org>
+List-Help: <mailto:linux-phy-request@lists.infradead.org?subject=help>
+List-Subscribe: <https://lists.infradead.org/mailman/listinfo/linux-phy>,
+ <mailto:linux-phy-request@lists.infradead.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Sender: "linux-phy" <linux-phy-bounces@lists.infradead.org>
+Errors-To: linux-phy-bounces+linux-phy=archiver.kernel.org@lists.infradead.org
+
+
+On Fri, 10 Jan 2025 13:39:13 +0100, Andras Szemzo wrote:
+> Add compatible strings for V853 family pinctrl.
+> 
+> Signed-off-by: Andras Szemzo <szemzo.andras@gmail.com>
+> ---
+>  .../pinctrl/allwinner,sun4i-a10-pinctrl.yaml        | 13 +++++++++++++
+>  1 file changed, 13 insertions(+)
+> 
+
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
+
+
+-- 
+linux-phy mailing list
+linux-phy@lists.infradead.org
+https://lists.infradead.org/mailman/listinfo/linux-phy
+

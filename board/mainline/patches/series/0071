@@ -1,0 +1,125 @@
+From mboxrd@z Thu Jan  1 00:00:00 1970
+Return-Path: <linux-riscv-bounces+linux-riscv=archiver.kernel.org@lists.infradead.org>
+X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
+	aws-us-west-2-korg-lkml-1.web.codeaurora.org
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.lore.kernel.org (Postfix) with ESMTPS id 2D774E7719C
+	for <linux-riscv@archiver.kernel.org>; Sat, 11 Jan 2025 10:36:08 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=lists.infradead.org; s=bombadil.20210309; h=Sender:
+	Content-Transfer-Encoding:Content-Type:List-Subscribe:List-Help:List-Post:
+	List-Archive:List-Unsubscribe:List-Id:In-Reply-To:MIME-Version:References:
+	Message-ID:Subject:Cc:To:From:Date:Reply-To:Content-ID:Content-Description:
+	Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:
+	List-Owner; bh=VFCA8I8/XfwInDZYC5eyDmKlhKKB96f1ItJPbk62yuU=; b=OxK5WKGtplPowL
+	z+CBiv+iVMdfNMj0lO15/kIhz+YbrRu3dMeK4Sp4xy75/xOc7Uv3P2CiAneY+z2c9OGtFdk6WlEZR
+	LF2fg1rNqwB4uDlm5HMUek3SZORGhzZeuZ2whKfCnJ1AFZNoit4A5+mUOVD4PT9PVL5WQ1aVVpegq
+	XBNVqN7zQrDSwTaOlFFKdrQ9f0NdP2K4ioLsW7AQ2O8fYdluf9ZE4sQopP0PVV9b0rCOeNjLzRTug
+	PNuUkJid4VV8rNwR48eTNGIeOtDtF84Gm/w0N0ASG/PggtaN+LPbOrLH0ztRnL3ikB0wHyaUoI+CB
+	CQEIhdj7MaLCeShpylFQ==;
+Received: from localhost ([::1] helo=bombadil.infradead.org)
+	by bombadil.infradead.org with esmtp (Exim 4.98 #2 (Red Hat Linux))
+	id 1tWYqX-00000000cmo-2Khc;
+	Sat, 11 Jan 2025 10:36:01 +0000
+Received: from dfw.source.kernel.org ([2604:1380:4641:c500::1])
+	by bombadil.infradead.org with esmtps (Exim 4.98 #2 (Red Hat Linux))
+	id 1tWYpJ-00000000ceb-2SjC;
+	Sat, 11 Jan 2025 10:34:46 +0000
+Received: from smtp.kernel.org (transwarp.subspace.kernel.org [100.75.92.58])
+	by dfw.source.kernel.org (Postfix) with ESMTP id 278D05C55F9;
+	Sat, 11 Jan 2025 10:34:04 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E3E9DC4CED2;
+	Sat, 11 Jan 2025 10:34:43 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1736591684;
+	bh=fZZO1bOwQFo1CHWDq8ozMF5xVNRUoFfXSFD36dQXts0=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=eEt9SZVAcsDhaE3khNvA4RArfSbaSsdZOo02A1OVG5A5LcKCD+z/U6fppXTQnqBcE
+	 DHTRPht/9CbH5fTgCV3RP2aC2aQnBbtAIAjchoW4TwDAKODiQJSlsuqZpKC6KVCVB8
+	 vhmVPlbpWSIzLNt/7ti308tHeIgRKluU/U5Q6CLJofPbYiIbZz1wcqrI32gn6N9bRx
+	 Krd1Lnc5GIRl6hEvhc+YqLzIzLiHcFHl3cXCK//sX4UpFDXyDT7yWYTLR1eUkFbM85
+	 ghKuyTqPhlWMDEqCucRvvKEwgNnkFOTsPkMWLYaGkmQkVaywRIYxjtg6DNc3QczD4q
+	 N5qcXnanbMiTQ==
+Date: Sat, 11 Jan 2025 11:34:42 +0100
+From: Krzysztof Kozlowski <krzk@kernel.org>
+To: Andras Szemzo <szemzo.andras@gmail.com>
+Cc: Michael Turquette <mturquette@baylibre.com>, 
+	Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+	Krzysztof Kozlowski <krzk+dt@kernel.org>, Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@csie.org>, 
+	Jernej Skrabec <jernej.skrabec@gmail.com>, Samuel Holland <samuel@sholland.org>, 
+	Linus Walleij <linus.walleij@linaro.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
+	Maxime Ripard <mripard@kernel.org>, Vinod Koul <vkoul@kernel.org>, 
+	Kishon Vijay Abraham I <kishon@kernel.org>, Ulf Hansson <ulf.hansson@linaro.org>, 
+	Paul Walmsley <paul.walmsley@sifive.com>, Palmer Dabbelt <palmer@dabbelt.com>, 
+	Albert Ou <aou@eecs.berkeley.edu>, Uwe =?utf-8?Q?Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
+	Florian Fainelli <florian.fainelli@broadcom.com>, linux-clk@vger.kernel.org, devicetree@vger.kernel.org, 
+	linux-arm-kernel@lists.infradead.org, linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+	linux-phy@lists.infradead.org, linux-gpio@vger.kernel.org, linux-pm@vger.kernel.org, 
+	linux-riscv@lists.infradead.org
+Subject: Re: [PATCH 06/12] dt-bindings: clk: sunxi-ng: add V853 CCU
+ clock/reset
+Message-ID: <tttj7va4hzpqugah4rhm2u5kganuix5iy7373h62b3rgfwvdbt@53vexrsfmskk>
+References: <20250110123923.270626-1-szemzo.andras@gmail.com>
+ <20250110123923.270626-7-szemzo.andras@gmail.com>
+MIME-Version: 1.0
+Content-Disposition: inline
+In-Reply-To: <20250110123923.270626-7-szemzo.andras@gmail.com>
+X-CRM114-Version: 20100106-BlameMichelson ( TRE 0.8.0 (BSD) ) MR-646709E3 
+X-CRM114-CacheID: sfid-20250111_023445_670784_F29D9F31 
+X-CRM114-Status: GOOD (  14.12  )
+X-BeenThere: linux-riscv@lists.infradead.org
+X-Mailman-Version: 2.1.34
+Precedence: list
+List-Id: <linux-riscv.lists.infradead.org>
+List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-riscv>,
+ <mailto:linux-riscv-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-riscv/>
+List-Post: <mailto:linux-riscv@lists.infradead.org>
+List-Help: <mailto:linux-riscv-request@lists.infradead.org?subject=help>
+List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-riscv>,
+ <mailto:linux-riscv-request@lists.infradead.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Sender: "linux-riscv" <linux-riscv-bounces@lists.infradead.org>
+Errors-To: linux-riscv-bounces+linux-riscv=archiver.kernel.org@lists.infradead.org
+
+On Fri, Jan 10, 2025 at 01:39:17PM +0100, Andras Szemzo wrote:
+> As the device tree needs the clock/reset indices, add them to DT binding
+> headers.
+> 
+> Signed-off-by: Andras Szemzo <szemzo.andras@gmail.com>
+> ---
+>  include/dt-bindings/clock/sun8i-v853-ccu.h   | 132 +++++++++++++++++++
+
+Please use full compatible as filename.
+
+>  include/dt-bindings/clock/sun8i-v853-r-ccu.h |  16 +++
+>  include/dt-bindings/reset/sun8i-v853-ccu.h   |  62 +++++++++
+>  include/dt-bindings/reset/sun8i-v853-r-ccu.h |  14 ++
+>  4 files changed, 224 insertions(+)
+>  create mode 100644 include/dt-bindings/clock/sun8i-v853-ccu.h
+>  create mode 100644 include/dt-bindings/clock/sun8i-v853-r-ccu.h
+>  create mode 100644 include/dt-bindings/reset/sun8i-v853-ccu.h
+>  create mode 100644 include/dt-bindings/reset/sun8i-v853-r-ccu.h
+> 
+> diff --git a/include/dt-bindings/clock/sun8i-v853-ccu.h b/include/dt-bindings/clock/sun8i-v853-ccu.h
+> new file mode 100644
+> index 000000000000..a405b982f914
+> --- /dev/null
+> +++ b/include/dt-bindings/clock/sun8i-v853-ccu.h
+> @@ -0,0 +1,132 @@
+> +/* SPDX-License-Identifier: (GPL-2.0+ OR MIT) */
+
+BTW, also checkpatch warns about this...
+
+Best regards,
+Krzysztof
+
+
+_______________________________________________
+linux-riscv mailing list
+linux-riscv@lists.infradead.org
+http://lists.infradead.org/mailman/listinfo/linux-riscv
+

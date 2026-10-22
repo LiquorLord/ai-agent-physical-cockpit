@@ -1,0 +1,28 @@
+#!/bin/sh
+# ==============================================================================
+# S12usb_gadget - On-boot GUD Display + CDC-NCM Composite Gadget Launcher
+# 全志 V553 开机自启硬件级 USB 显卡与高速网络复合设备服务
+# ==============================================================================
+
+case "$1" in
+    start)
+        echo "[USB] Activating GUD USB Display + CDC-NCM Composite Gadget..."
+        [ -f /sys/devices/platform/soc/usbc0/otg_role ] && echo 2 > /sys/devices/platform/soc/usbc0/otg_role 2>/dev/null
+        /opt/switch_to_gud.sh
+        ;;
+    stop)
+        echo "[USB] Stopping GUD USB Display..."
+        killall -9 gud_v553 2>/dev/null
+        echo "" > /sys/kernel/config/usb_gadget/g1/UDC 2>/dev/null
+        umount /dev/ffs-gud 2>/dev/null
+        ;;
+    restart)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac

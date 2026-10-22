@@ -1,0 +1,121 @@
+From mboxrd@z Thu Jan  1 00:00:00 1970
+Received: from mail-lj1-f170.google.com (mail-lj1-f170.google.com [209.85.208.170])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E958021325C
+	for <linux-sunxi@lists.linux.dev>; Wed, 22 Jan 2025 13:30:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.170
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1737552651; cv=none; b=RsowgPBwfyyyMDzCbR4tQGhwWn8WRnQeTFRuj0Sil3rbvVXkf8gsfzgqVJSGTaevwQ8QG+v/I18nwLYUuA2HwpBkzMCcr9pzO3Jd5YqBMo431zUS/mAvBBL9tzUERo5NnMSuAFdO5JA41Yfby41/K0vbVDfarPKwROerSOzf7mU=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1737552651; c=relaxed/simple;
+	bh=MT1Qd4GfkNXwqWLqiWPdrTymaf6z71RpZBpS8qzx2Bk=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=MXZD+0JUu1rqfIAPQKnwQfHQnx9SNbVGDBM0wp4SVWON+vvMl81ag9Xf8vrx/j9JfWwfeDvwV/z045hrZQoBx0BmCgb05yVKQGw4RCEb/xB4edwof15NU1v+uLtlGVvdaSuBCXyEzOkPjnX7/H0/CwW5Lk3s50cM/3iAl1SvEpQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linaro.org; spf=pass smtp.mailfrom=linaro.org; dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b=yRMG2xRE; arc=none smtp.client-ip=209.85.208.170
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linaro.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linaro.org
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b="yRMG2xRE"
+Received: by mail-lj1-f170.google.com with SMTP id 38308e7fff4ca-30229d5b21cso58831111fa.1
+        for <linux-sunxi@lists.linux.dev>; Wed, 22 Jan 2025 05:30:49 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linaro.org; s=google; t=1737552648; x=1738157448; darn=lists.linux.dev;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=MT1Qd4GfkNXwqWLqiWPdrTymaf6z71RpZBpS8qzx2Bk=;
+        b=yRMG2xREJpE8xptrcV02crsjat7tEpgwWsGdybksyrTBaB1CXQf3oJIxcKHX4ejbhR
+         lyW6iDV5fsHZGgj9LgEtp6xr47WTiO2XX/BY3/48D5a0/e4fYpKa3IHbJA3UN4bczGeH
+         8xxK0BEJCSxIOMK7AVR8QeRjewI4cTPwwx0r+ly74nrM6Ahi9k7DUKdegty3SkcsNfm5
+         jnb61X6MGyfuUDIeDI1lX0lVqNQQz/oePfY/dGBqaokuFWDA8YhQIwNPjjfMAqFWH12e
+         gf9/bPCVone0yV9Wb93XXBODcAkapizY8bbzMO+Dz3ta28X/yWoNXujQ4yYF9CWvokKT
+         Mmhg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1737552648; x=1738157448;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=MT1Qd4GfkNXwqWLqiWPdrTymaf6z71RpZBpS8qzx2Bk=;
+        b=oZ0dfS7VRsDPn5MPWkiWZ6W0o3CLZzsVkRYc23yo2B5P6fQYa2by7Bcg+EY90m0cB5
+         yN/zVv0vFpZS/NeeLwdR3lvwrH0TEL58minpyARgXH8KVtgFV1CRd+22jfDWQIo4M4a2
+         NC2Rj12xYBG6EjDYeBKccM7QYMAkLnjQuAK/AdbLEJtTtRO3Hl4ZbbCvKhJK3L47wDsM
+         zeoecWTRsGMg4tAbFRTw9tXwyQuwogShO2C8qPcekKGE5lARVlsNcqK83ABMJBJojfIp
+         ZahUO293GdrvTTQgcTIPQ1EFyX6PWkKVfKccCsn9eEdKiXffiV9tDCxCdi9C8o+f0Zk5
+         LJhA==
+X-Forwarded-Encrypted: i=1; AJvYcCXhHihamdZAPO0UxIDaZEjUaeEiClSj7h+2IthcKxQ5/SFtaqB0fwrzMtip1mvSJnxaTg0D7A3/PX6+Vg==@lists.linux.dev
+X-Gm-Message-State: AOJu0Yx9nTG0hd/YYEBMa2JkVta+wCf4XN0y3rApIgjUMvCK5qhQNJMr
+	5kJllcnLefKuGHX24IF+CpDRvO086ZlLSva6TYeWcEd31V+RtYSpXCctPefiYt0AyaP9oe/JQSu
+	GXkL77oFoQdG+xYNxjEFMg6ejZXKjWVoiyMA4ng==
+X-Gm-Gg: ASbGncuz3gj1oPK0KtdKfarOj+Wv6jmHL6bXFHod2RKFUenyXgfYh4FUBmMDx52a55Q
+	FmqyBOvYdTc3lmoHWI+RfOgZrmB1nyZO8RADRllJa+PTQt6vCqg==
+X-Google-Smtp-Source: AGHT+IGs/n7Ljor2d3ADarC6NG+9NmWSbVqt5BnALy/+iVRtZ9CeuWAGeuayEWCsA+u7d2kSrA4qXict3/8+PKzO1MM=
+X-Received: by 2002:a05:6512:ad5:b0:542:8d45:cb3e with SMTP id
+ 2adb3069b0e04-5439c241016mr8306080e87.18.1737552647836; Wed, 22 Jan 2025
+ 05:30:47 -0800 (PST)
+Precedence: bulk
+X-Mailing-List: linux-sunxi@lists.linux.dev
+List-Id: <linux-sunxi.lists.linux.dev>
+List-Subscribe: <mailto:linux-sunxi+subscribe@lists.linux.dev>
+List-Unsubscribe: <mailto:linux-sunxi+unsubscribe@lists.linux.dev>
+MIME-Version: 1.0
+References: <20250110123923.270626-1-szemzo.andras@gmail.com>
+ <20250110123923.270626-4-szemzo.andras@gmail.com> <20250114141954.2785879a@donnerap.manchester.arm.com>
+ <CACRpkda0nx3SQtdjmXdCEbVJSWM10TM=p-6JbDjbiYcOSF5PxQ@mail.gmail.com>
+ <20250115152635.1b89e7f4@donnerap.manchester.arm.com> <CACRpkdYVTedEon0X-izvaDTGF6yRhD2s=Z6NEM=zBf4vD-T0Pg@mail.gmail.com>
+ <20250117145228.2fc8a64e@donnerap.manchester.arm.com>
+In-Reply-To: <20250117145228.2fc8a64e@donnerap.manchester.arm.com>
+From: Linus Walleij <linus.walleij@linaro.org>
+Date: Wed, 22 Jan 2025 14:30:36 +0100
+X-Gm-Features: AbW1kvbmavQU6KJ-WzCpG2eI69ENGFRQZ6H5c_O0ajyC4q6k3ZeKpvUjD-d9bk8
+Message-ID: <CACRpkdZ29=mCqLku4Obq+E5j6kS4NZchwCtrTeCt0qUctn6Czg@mail.gmail.com>
+Subject: Re: [PATCH 03/12] pinctrl: sunxi: add driver for Allwinner V853.
+To: Andre Przywara <andre.przywara@arm.com>
+Cc: Andras Szemzo <szemzo.andras@gmail.com>, Michael Turquette <mturquette@baylibre.com>, 
+	Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+	Krzysztof Kozlowski <krzk+dt@kernel.org>, Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@csie.org>, 
+	Jernej Skrabec <jernej.skrabec@gmail.com>, Samuel Holland <samuel@sholland.org>, 
+	Philipp Zabel <p.zabel@pengutronix.de>, Maxime Ripard <mripard@kernel.org>, 
+	Vinod Koul <vkoul@kernel.org>, Kishon Vijay Abraham I <kishon@kernel.org>, 
+	Ulf Hansson <ulf.hansson@linaro.org>, Paul Walmsley <paul.walmsley@sifive.com>, 
+	Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+	=?UTF-8?Q?Uwe_Kleine=2DK=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
+	Florian Fainelli <florian.fainelli@broadcom.com>, linux-clk@vger.kernel.org, 
+	devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+	linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+	linux-phy@lists.infradead.org, linux-gpio@vger.kernel.org, 
+	linux-pm@vger.kernel.org, linux-riscv@lists.infradead.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+On Fri, Jan 17, 2025 at 3:52=E2=80=AFPM Andre Przywara <andre.przywara@arm.=
+com> wrote:
+
+> That is actually a good argument: At the moment I am happy with my
+> proposal (the allwinner,pinmux =3D <number>; property), but that seems li=
+ke
+> standard #15 then.
+> So would biting the bullet and adopting the Apple/STM32 way then be more
+> sustainable?
+
+I suppose...
+
+> On the other hand: the allwinner,pinmux solution has the advantage of bei=
+ng
+> already written and proven working, also it stays very close to the
+> existing description/binding - so implementations like U-Boot could just
+> keep on using the "function" string.
+>
+> I am a bit torn here... I don't think I will find the solitude to
+> implement this "Apple" approach in the next few weeks.
+
+I think whatever the Allwinner maintainers agree is the best should
+be what you go for. It is a lot of hobbyist maintainers in this space
+and for them the bar should be lower.
+
+If you have buy-in from the other maintainers, then go for that
+solution.
+
+Yours,
+Linus Walleij
+

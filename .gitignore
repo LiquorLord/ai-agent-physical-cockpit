@@ -1,0 +1,48 @@
+# Byte-compiled / Python
+__pycache__/
+*.py[cod]
+
+# Compiled device binaries
+firmware/bin/
+firmware/splash/*.raw
+
+# Kernel module build artifacts
+*.o
+*.ko
+*.mod
+*.mod.c
+*.cmd
+Module.symvers
+modules.order
+.module-common.o
+host-tools/gud_turbo/*.ko
+host-tools/gud_turbo/*.o
+host-tools/gud_turbo/*.mod
+host-tools/gud_turbo/*.mod.c
+host-tools/gud_turbo/*.cmd
+host-tools/gud_turbo/Module.symvers
+host-tools/gud_turbo/modules.order
+host-tools/gud_turbo/.module-common.o
+
+# Build / release artifacts (published via GitHub/Gitee Releases, not git)
+output/
+logs/
+board/mainline/build/
+board/mainline/output/
+board/buildroot/buildroot/
+board/buildroot/binaries/
+board/buildroot/glibc_patched/
+
+# Factory reverse-engineering dumps & binaries
+factory-reverse/rootfs/
+factory-reverse/backups/
+factory-reverse/logs/
+factory-reverse/factory_vmlinux.bin
+factory-reverse/dts/*.dtb
+factory-reverse/flasher/flash_tool
+factory-reverse/flasher/sunxi-tools/
+
+# Editor / OS
+.DS_Store
+*.swp
+*~

@@ -1,0 +1,6 @@
+# Allwinner V553 AGY Physical Cockpit
+# USB 2.0 High-Speed Gadget (18d1:d002 ADB / FunctionFS)
+# Grant standard user read/write access without requiring root
+
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="d002", MODE="0666", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="1f3a", ATTR{idProduct}=="efe8", MODE="0666", TAG+="uaccess"
