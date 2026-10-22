@@ -1,4 +1,4 @@
-# AGY Physical Cockpit
+# AI-Agent Physical Cockpit
 
 [English](README.md) | [简体中文](README_zh.md)
 
@@ -13,7 +13,7 @@
 
 ## 1. Project Overview
 
-**AGY Physical Cockpit** is an open-source hardware/software transformation project that repurposes ubiquitous, cost-effective Allwinner V553 (`sun8iw21`) automotive smart screens into an intelligent, driverless physical companion for AI-assisted programming (Antigravity CLI / Vibe Coding).
+**AI-Agent Physical Cockpit** is an open-source hardware/software transformation project that repurposes ubiquitous, cost-effective Allwinner V553 (`sun8iw21`) automotive smart screens into an intelligent, driverless physical companion for AI-assisted programming (Antigravity CLI / Vibe Coding).
 
 ### The Golden Rule: 100% Non-Intrusive Dual-Boot
 - **Zero Soldering, Zero Risk**: No hardware modifications required.

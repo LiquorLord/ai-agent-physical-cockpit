@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # setup_gud_screen.sh - Automated X11 & i3-wm Setup for V553 USB Hardware Display
-# 全志 V553 原生硬件 USB 显示卡 (GUD) X11 拓扑自动配置脚本
+# Allwinner V553 native hardware USB display (GUD) X11 topology auto-configuration script
 # ==============================================================================
 
 set -e

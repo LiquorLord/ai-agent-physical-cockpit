@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Cold Boot Capture Tool for Allwinner V553
-全志 V553 冷启动日志捕获工具
+Allwinner V553 cold-boot log capture tool
 """
 
 import sys
@@ -31,7 +31,7 @@ def main():
 
     print(f"[+] Listening on {PORT} at {BAUD} baud for {DURATION}s...")
     print("[+] >>> PLEASE UNPLUG AND RE-PLUG THE TYPE-C POWER CABLE NOW! <<<")
-    print("[+] >>> 请立即拔掉 Type-C 供电线，然后重新插上！ <<<")
+    print("[+] >>> Please unplug the Type-C power cable now, then plug it back in! <<<")
     sys.stdout.flush()
 
     start_time = time.time()

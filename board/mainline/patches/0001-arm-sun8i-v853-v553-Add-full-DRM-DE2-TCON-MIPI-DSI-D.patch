@@ -1,5 +1,5 @@
 From 45c78d1274a929dcb3706049cb0519e09f4dc9d7 Mon Sep 17 00:00:00 2001
-From: wchen <wchen@ternary.com.au>
+From: wchen <chenwen.beijing@gmail.com>
 Date: Tue, 20 Oct 2026 06:36:02 +0000
 Subject: [PATCH] arm: sun8i: v853/v553: Add full DRM DE2/TCON/MIPI-DSI/DPHY
  support and BOE wtl1026boe2l 600x1600 panel

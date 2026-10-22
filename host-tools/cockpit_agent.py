@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-AGY Physical Cockpit - Host Companion Agent
-全志 V553 物理座舱宿主机端交互伴侣 (英汉双语 / Bilingual)
+AI-Agent Physical Cockpit - Host Companion Agent
+Allwinner V553 physical cockpit host-side interactive companion
 
 Zero-Typing PTY Master & ADB Hardware Event Bridge:
 1. PTY Master Mode (Default):
@@ -48,7 +48,7 @@ def check_connection():
     return False
 
 def sync_terminal_window_size(master_fd):
-    """Propagate terminal window size to pseudo-terminal / 同步终端窗口行列尺寸"""
+    """Propagate terminal window size to pseudo-terminal"""
     try:
         ws = fcntl.ioctl(sys.stdin.fileno(), termios.TIOCGWINSZ, struct.pack("HHHH", 0, 0, 0, 0))
         fcntl.ioctl(master_fd, termios.TIOCSWINSZ, ws)
@@ -138,7 +138,7 @@ def udp_listener_thread(master_fd=None, stop_event=None):
 def run_pty_session(cmd):
     """
     Wrap target command in PTY with bidirectional I/O and touch injection
-    在伪终端中执行交互式任务，物理按键零输入直接注入标准输入流
+    Run interactive tasks in a pseudo-terminal, injecting physical-key zero-input directly into the standard input stream
     """
     log(f"[*] Launching interactive PTY session: {' '.join(cmd)}")
     log("[*] Touch [PROCEED / READY] on screen to auto-input 'ready'")
@@ -238,9 +238,9 @@ def run_pty_session(cmd):
         log(f"[*] Child session finished (exit code {os.waitstatus_to_exitcode(status)})")
 
 def run_monitor_mode():
-    """Passive monitoring mode / 被动监听模式"""
+    """Passive monitoring mode"""
     print("=" * 60)
-    print("  AGY Physical Cockpit - Hardware Monitor Mode")
+    print("  AI-Agent Physical Cockpit - Hardware Monitor Mode")
     print("  Listening to Goodix GT911 touch events over UDP...")
     print("=" * 60)
     stop_event = threading.Event()
@@ -276,7 +276,7 @@ def switch_device_profile(profile_name):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="AGY Physical Cockpit Host Companion / V553 物理座舱交互伴侣",
+        description="AI-Agent Physical Cockpit Host Companion",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(

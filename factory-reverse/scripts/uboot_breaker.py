@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Interactive U-Boot Autoboot Breaker for Allwinner V553 (Tina Linux)
-全志 V553 U-Boot 交互式自动拦截器
+Allwinner V553 U-Boot interactive auto-interceptor
 """
 
 import sys
@@ -34,9 +34,9 @@ def main():
 
     print("=" * 65)
     print(" [*] Allwinner V553 U-Boot Breaker (Tina Linux)")
-    print(" [*] 全志 V553 U-Boot 自动拦截控制台")
-    print(" [*] 正在高频发送空格以拦截 bootdelay=0...")
-    print(" [*] 请确保已【彻底断电至少 5 秒】，然后【插上 Type-C 电源】！")
+    print(" [*] Allwinner V553 U-Boot auto-intercept console")
+    print(" [*] Sending spaces at high frequency to intercept bootdelay=0...")
+    print(" [*] Make sure to fully power off for at least 5 seconds, then plug in Type-C power!")
     print("=" * 65)
     sys.stdout.flush()
 
@@ -75,7 +75,7 @@ def main():
 
     if interrupted:
         print("\n\n" + "=" * 65)
-        print(" [!!!] SUCCESS! U-BOOT PROMPT INTERRUPTED! / 拦截成功！已进入 U-Boot！")
+        print(" [!!!] SUCCESS! U-BOOT PROMPT INTERRUPTED!")
         print(" [*] Entering interactive shell... Type commands (e.g. printenv).")
         print("=" * 65 + "\n")
         sys.stdout.flush()
@@ -115,7 +115,7 @@ def main():
                     sys.stdout.buffer.write(data)
                     sys.stdout.buffer.flush()
                     if b"/ #" in data or b"/bin/sh" in data or b"#" in data:
-                        print("\n[!!!] ROOT SHELL OBTAINED! / 成功获取免密 ROOT SHELL！")
+                        print("\n[!!!] ROOT SHELL OBTAINED!")
                         os.write(fd, b"\r\nid; cat /proc/partitions; mount -o remount,rw /\r\n")
                         break
 

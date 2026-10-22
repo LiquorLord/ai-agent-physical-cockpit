@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Serial Boot Logger for Allwinner V553
-全志 V553 串口引导抓取工具
+Allwinner V553 serial boot capture tool
 """
 
 import sys
@@ -38,7 +38,7 @@ def main():
     termios.tcflush(fd, termios.TCIOFLUSH)
 
     print(f"[+] Listening and capturing to {LOG_FILE} for {DURATION} seconds...")
-    print("[+] READY! You can press RESET now! / 已就绪，请现在按下 RESET！")
+    print("[+] READY! You can press RESET now!")
     sys.stdout.flush()
 
     start_time = time.time()

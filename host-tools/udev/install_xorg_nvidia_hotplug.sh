@@ -1,9 +1,9 @@
 #!/bin/bash
 # ==============================================================================
-# AGY Physical Cockpit — Optional Xorg + NVIDIA PRIME Hotplug Installer
-# 全志 V553 智能座舱 —— Xorg + NVIDIA 双显卡热拔插自动激活安装脚本（可选）
+# AI-Agent Physical Cockpit — Optional Xorg + NVIDIA PRIME Hotplug Installer
+# Allwinner V553 smart cockpit — Xorg + NVIDIA dual-GPU hotplug auto-activation install script (optional)
 #
-# Note / 说明:
+# Note:
 # - On Wayland (GNOME / KDE / Sway) or single-GPU Intel/AMD desktops, the V553
 #   GUD USB Display works 100% plug-and-play without this script.
 # - On legacy Xorg + NVIDIA proprietary driver desktops, Xorg registers hotplugged

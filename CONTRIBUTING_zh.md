@@ -1,13 +1,13 @@
 # 贡献指南
 
-感谢您对AGY物理驾驶舱项目的兴趣！
+感谢您对AI-Agent 物理驾驶舱项目的兴趣！
 
 # 开始贡献
 
 1. 将仓库fork到您的GitHub账户。
 2. 克隆您的分支仓库：
    ```
-   git clone https://github.com/yourusername/AGY-Physical-Cockpit.git
+   git clone https://github.com/yourusername/AI-Agent-Physical-Cockpit.git
    ```
 
 # 开发环境设置

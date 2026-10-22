@@ -1,12 +1,12 @@
 #!/bin/sh
 # ==============================================================================
-# AGY Cockpit Dual-Boot Handover Engine / 双启动移交引擎
+# AI-Agent Cockpit Dual-Boot Handover Engine
 # ==============================================================================
 exec > /mnt/sdcard/boot_debug.log 2>&1
 set -x
 
 echo "=========================================================="
-echo " Starting AGY Physical Cockpit System (Standalone Buildroot)"
+echo " Starting AI-Agent Physical Cockpit System (Standalone Buildroot)"
 echo " Timestamp: $(date 2>/dev/null || echo boot)"
 echo "=========================================================="
 

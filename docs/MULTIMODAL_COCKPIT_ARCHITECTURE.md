@@ -8,7 +8,7 @@
 
 ## 1. Architectural Vision & Core Design Consensus
 
-Following the `/grill-me` architectural review, the Allwinner V553 (`sun8iw21`) platform has transitioned from a passive dashcam/monitor into an **Edge-AI Multimodal Companion Terminal (AGY Physical Cockpit)**.
+Following the `/grill-me` architectural review, the Allwinner V553 (`sun8iw21`) platform has transitioned from a passive dashcam/monitor into an **Edge-AI Multimodal Companion Terminal (AI-Agent Physical Cockpit)**.
 
 The architecture abandons software-level screen scraping, adopting **Native Hardware USB Peripheral Emulation + On-Device Edge AI Perception + Seamless Dual-Mode Roaming**.
 

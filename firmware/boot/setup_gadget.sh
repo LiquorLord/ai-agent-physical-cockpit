@@ -1,7 +1,7 @@
 #!/bin/sh
 # ==============================================================================
-# AGY Physical Cockpit: USB Composite Gadget ConfigFS Driver
-# 全志 V553 物理级专属座舱 USB 免驱复合外设驱动配置 (NCM以太网 + HID键盘)
+# AI-Agent Physical Cockpit: USB Composite Gadget ConfigFS Driver
+# Allwinner V553 physical cockpit driverless USB composite gadget configuration (NCM Ethernet + HID keyboard)
 # ==============================================================================
 
 GADGET_DIR="/sys/kernel/config/usb_gadget/g1"
@@ -11,7 +11,7 @@ CONFIG_DIR="$GADGET_DIR/configs/c.1"
 UDC_CONTROLLER=$(ls /sys/class/udc 2>/dev/null | head -n 1)
 [ -z "$UDC_CONTROLLER" ] && UDC_CONTROLLER="4100000.udc-controller"
 
-echo "[*] Initializing AGY USB Composite Gadget on $UDC_CONTROLLER..."
+echo "[*] Initializing AI-Agent USB Composite Gadget on $UDC_CONTROLLER..."
 
 # 1. Unbind UDC if currently bound
 if [ -f "$GADGET_DIR/UDC" ]; then
@@ -35,8 +35,8 @@ echo 0x01   > "$GADGET_DIR/bDeviceProtocol"  # Interface Association Descriptor 
 
 # 4. Device Strings
 mkdir -p "$GADGET_DIR/strings/0x409"
-echo "AGY Open Source Project"  > "$GADGET_DIR/strings/0x409/manufacturer"
-echo "AGY Physical Cockpit"     > "$GADGET_DIR/strings/0x409/product"
+echo "AI-Agent Open Source Project"  > "$GADGET_DIR/strings/0x409/manufacturer"
+echo "AI-Agent Physical Cockpit"     > "$GADGET_DIR/strings/0x409/product"
 echo "20080411"                 > "$GADGET_DIR/strings/0x409/serialnumber"
 
 # 5. Configuration Descriptor

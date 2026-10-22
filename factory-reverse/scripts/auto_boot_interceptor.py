@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Allwinner Cold Boot Logger & U-Boot Interceptor
-全志冷启动全日志捕获与 U-Boot 拦截器
+Allwinner cold-boot full log capture and U-Boot interceptor
 """
 
 import sys
@@ -34,7 +34,7 @@ def main():
     print(f"[+] Serial port {PORT} ready at {BAUD} baud.")
     print(f"[+] Capturing log to: {LOG_FILE}")
     print("[+] >>> READY! PLEASE PLUG IN USB / POWER CABLE NOW! <<<")
-    print("[+] >>> 已就绪！请立即插上 USB 电源线！ <<<")
+    print("[+] >>> Ready! Please plug in the USB power cable now! <<<")
     sys.stdout.flush()
 
     start_time = time.time()

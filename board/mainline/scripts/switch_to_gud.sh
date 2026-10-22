@@ -1,6 +1,6 @@
 #!/bin/sh
 # Switch V553 to GUD USB Display (1200x600) + USB HID Keyboard Composite Gadget
-# 切换 V553 为 GUD 原生 USB 显卡 (1200x600) + USB HID 键盘复合设备 (纯净零网络)
+# Switch V553 into a GUD native USB display (1200x600) + USB HID keyboard composite device (pure, no network)
 
 LOG="/tmp/gud_switch.log"
 exec > "$LOG" 2>&1

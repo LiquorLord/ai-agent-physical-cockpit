@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Test common root passwords on Linux console
-测试控制台常见密码
+Test common console passwords
 """
 
 import sys
