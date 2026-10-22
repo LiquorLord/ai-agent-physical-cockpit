@@ -13,12 +13,29 @@
 
 ## 1. Project Overview
 
-**AI-Agent Physical Cockpit** is an open-source hardware/software transformation project that repurposes ubiquitous, cost-effective Allwinner V553 (`sun8iw21`) automotive smart screens into an intelligent, driverless physical companion for AI-assisted programming (Antigravity CLI / Vibe Coding).
+**AI-Agent Physical Cockpit** started life as a **cheap eBay dashcam**.
+
+The author bought a 10.26" dash camera on eBay and was surprised by how much hardware it
+delivered for the price — especially its **ultra-wide bar display**, which is a perfect fit
+for sitting *in front of a developer's keyboard, just below the main monitor*, as a dedicated
+sidekick for **vibe-coding**.
+
+So the hacker spirit kicked in: the shell came off, debug UART wires were soldered on, and the
+**Allwinner V553** (`sun8iw21`, running Linux) inside was reverse-engineered into an
+open-source, driverless physical companion for AI-assisted programming (Antigravity CLI /
+vibe-coding). The device is a rebadged **XGODY H26**-class 10.26" dual-camera dashcam.
+
+<p align="center">
+  <img src="docs/images/device.jpg" alt="The 10.26-inch dashcam hacked into a vibe-coding cockpit" width="70%">
+</p>
 
 ### The Golden Rule: 100% Non-Intrusive Dual-Boot
-- **Zero Soldering, Zero Risk**: No hardware modifications required.
-- **MicroSD Removed**: Boots the unadulterated factory Linux 4.9 OS from 16MB SPI NOR Flash (`cdr` video recorder, wireless Apple CarPlay / HiCar).
-- **MicroSD Inserted**: Allwinner on-chip BROM priority boots directly from SDC0 (Sector 16 eGON header) into our custom AI cockpit OS.
+- **Zero soldering for you**: the only soldering happened once, during reverse-engineering —
+  you never touch a soldering iron.
+- **MicroSD Removed**: Boots the unadulterated factory Linux 4.9 OS from 16MB SPI NOR Flash
+  (`cdr` video recorder, wireless Apple CarPlay / HiCar).
+- **MicroSD Inserted**: Allwinner on-chip BROM priority boots directly from SDC0 (Sector 16
+  eGON header) into our custom AI cockpit OS.
 
 ---
 
