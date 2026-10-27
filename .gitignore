@@ -32,6 +32,7 @@ board/mainline/output/
 board/buildroot/buildroot/
 board/buildroot/binaries/
 board/buildroot/glibc_patched/
+board/buildroot/.*_del/
 
 # Factory reverse-engineering dumps & binaries
 factory-reverse/rootfs/
@@ -46,3 +47,22 @@ factory-reverse/flasher/sunxi-tools/
 .DS_Store
 *.swp
 *~
+
+# ==============================================================================
+# AI Agent Sidecar & Private Workspace (Option 1 Pure Private Mode)
+# ==============================================================================
+.ai/
+GEMINI.md
+KANBAN.md
+KANBAN_zh.md
+transcript_history.log
+
+# Legacy compatibility symlinks
+mainline_workspace
+buildroot_workspace
+host_tools
+factory_reverse
+firmware/backup_sdcard_phase7/
+preview-photos
+
+
