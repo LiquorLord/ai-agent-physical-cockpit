@@ -20,7 +20,7 @@
 于是黑客精神发作：拆开外壳、焊上调试串口线，把里面的 **Allwinner V553**（`sun8iw21`，运行 Linux）逆向了出来，最终做成这个开源的、免驱动的 AI 编程物理伴侣（Antigravity CLI / vibe-coding）。这台设备本质上是换标的 **XGODY H26** 类 10.26" 双摄行车记录仪。
 
 <p align="center">
-  <img src="docs/images/device.jpg" alt="被改装成 vibe-coding 驾驶舱的 10.26 英寸行车记录仪" width="70%">
+  <img src="docs/images/device.jpg" alt="被改装成 vibe-coding 驾驶舱的 10.26 英寸行车记录仪" width="90%">
 </p>
 
 ### 黄金法则：100% 无侵入双启动

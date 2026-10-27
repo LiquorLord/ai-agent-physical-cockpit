@@ -26,7 +26,7 @@ open-source, driverless physical companion for AI-assisted programming (Antigrav
 vibe-coding). The device is a rebadged **XGODY H26**-class 10.26" dual-camera dashcam.
 
 <p align="center">
-  <img src="docs/images/device.jpg" alt="The 10.26-inch dashcam hacked into a vibe-coding cockpit" width="70%">
+  <img src="docs/images/device.jpg" alt="The 10.26-inch dashcam hacked into a vibe-coding cockpit" width="90%">
 </p>
 
 ### The Golden Rule: 100% Non-Intrusive Dual-Boot
