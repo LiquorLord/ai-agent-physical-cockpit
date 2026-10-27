@@ -1256,11 +1256,23 @@ func main() {
 			fingerDown = (ev.Value == 1)
 		} else if ev.Type == EV_SYN && ev.Code == SYN_REPORT {
 			if fingerDown {
-				screenX := int(rawX)
-				screenY := int(rawY)
+				var screenX, screenY int
+				if rawY > 600 {
+					// Goodix GT911 portrait mode (0..600 x 0..1600 -> 1600x600 landscape)
+					screenX = int(rawY)
+					screenY = 600 - int(rawX)
+					if screenY < 0 {
+						screenY = int(rawX)
+					}
+				} else {
+					// Goodix GT911 native landscape mode (0..1600 x 0..600)
+					screenX = int(rawX)
+					screenY = int(rawY)
+				}
 
 				// Physical Right 400x600 region (Zone B)
 				if screenX >= 1150 {
+					log.Printf("[TOUCH] Raw(%d, %d) -> Screen(%d, %d)", rawX, rawY, screenX, screenY)
 					if ui != nil && ui.currentView == ViewMenu {
 						// MENU VIEW TOUCH DISPATCH
 						if !actionTriggered && time.Since(lastTriggerTime) >= 350*time.Millisecond {
