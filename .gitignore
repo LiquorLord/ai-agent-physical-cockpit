@@ -4,6 +4,8 @@ __pycache__/
 
 # Compiled device binaries
 firmware/bin/
+firmware/apps/touch_cockpit
+firmware/apps/touch_cockpit.upx
 firmware/splash/*.raw
 
 # Kernel module build artifacts

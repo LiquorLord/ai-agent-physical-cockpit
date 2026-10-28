@@ -7,7 +7,9 @@ import time
 import base64
 import hashlib
 
-def send_file(local_path, remote_path, port='/dev/ttyUSB1'):
+def send_file(local_path, remote_path, port=None):
+    if port is None:
+        port = '/dev/ttyUSB1' if os.path.exists('/dev/ttyUSB1') else '/dev/ttyUSB0'
     with open(local_path, 'rb') as f:
         data = f.read()
     

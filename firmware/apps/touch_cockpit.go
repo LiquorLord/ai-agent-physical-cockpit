@@ -1013,15 +1013,34 @@ func (ui *CockpitUI) StartTelemetryCollector() {
 	}()
 }
 
+var (
+	hidMu   sync.Mutex
+	gHidFile *os.File
+)
+
+func getHidDevice() (*os.File, error) {
+	hidMu.Lock()
+	defer hidMu.Unlock()
+	if gHidFile != nil {
+		return gHidFile, nil
+	}
+	f, err := os.OpenFile("/dev/hidg0", os.O_WRONLY, 0666)
+	if err != nil {
+		return nil, err
+	}
+	gHidFile = f
+	return gHidFile, nil
+}
+
 // Low-level USB HID Keyboard Scancode Injection Engine (/dev/hidg0)
 func injectHidKeys(hid *os.File, keys []byte) {
 	for _, k := range keys {
 		press := []byte{0, 0, k, 0, 0, 0, 0, 0}
 		release := []byte{0, 0, 0, 0, 0, 0, 0, 0}
 		hid.Write(press)
-		time.Sleep(12 * time.Millisecond)
+		time.Sleep(15 * time.Millisecond)
 		hid.Write(release)
-		time.Sleep(12 * time.Millisecond)
+		time.Sleep(15 * time.Millisecond)
 	}
 }
 
@@ -1034,7 +1053,23 @@ func injectHidCombo(hid *os.File, mod byte, key byte) {
 	time.Sleep(15 * time.Millisecond)
 }
 
+func injectHidEnter(hid *os.File, hadPrecedingChars bool) {
+	if hadPrecedingChars {
+		// Settle pause: allow terminal, shell, and interactive CLI (e.g. agy, ink, readline)
+		// to process preceding characters and settle its input state before submitting
+		time.Sleep(200 * time.Millisecond)
+	}
+	press := []byte{0, 0, 0x28, 0, 0, 0, 0, 0}
+	release := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	hid.Write(press)
+	time.Sleep(50 * time.Millisecond)
+	hid.Write(release)
+	time.Sleep(30 * time.Millisecond)
+	log.Printf("[HID] Enter scancode (0x28) injected (hadPreceding=%v, hold=50ms)", hadPrecedingChars)
+}
+
 func injectHidString(hid *os.File, str string) {
+	typedCount := 0
 	for i := 0; i < len(str); i++ {
 		ch := str[i]
 		switch {
@@ -1044,63 +1079,90 @@ func injectHidString(hid *os.File, str string) {
 			injectHidCombo(hid, 0x01, 0x0F)
 		case ch == '\x1b': // Escape
 			injectHidKeys(hid, []byte{0x29})
-		case ch == '\n': // Enter / Return
-			injectHidKeys(hid, []byte{0x28})
+		case ch == '\n' || ch == '\r': // Enter / Return
+			injectHidEnter(hid, typedCount > 0)
+			typedCount = 0
 		case ch == '\t': // Tab
 			injectHidKeys(hid, []byte{0x2B})
+			typedCount++
 		case ch == ' ': // Space
 			injectHidKeys(hid, []byte{0x2C})
+			typedCount++
 		case ch == '-': // Minus
 			injectHidKeys(hid, []byte{0x2D})
+			typedCount++
 		case ch == '_': // Underscore (Shift + Minus)
 			injectHidCombo(hid, 0x02, 0x2D)
+			typedCount++
 		case ch == '/': // Slash
 			injectHidKeys(hid, []byte{0x38})
+			typedCount++
 		case ch == '?': // Question (Shift + Slash)
 			injectHidCombo(hid, 0x02, 0x38)
+			typedCount++
 		case ch == '.': // Dot
 			injectHidKeys(hid, []byte{0x37})
+			typedCount++
 		case ch == ':': // Colon (Shift + Semicolon)
 			injectHidCombo(hid, 0x02, 0x33)
+			typedCount++
 		case ch == ';': // Semicolon
 			injectHidKeys(hid, []byte{0x33})
+			typedCount++
 		case ch == '=': // Equal
 			injectHidKeys(hid, []byte{0x2E})
+			typedCount++
 		case ch == '+': // Plus (Shift + Equal)
 			injectHidCombo(hid, 0x02, 0x2E)
+			typedCount++
 		case ch == '!': // Exclamation (Shift + 1)
 			injectHidCombo(hid, 0x02, 0x1E)
+			typedCount++
 		case ch == '@': // At (Shift + 2)
 			injectHidCombo(hid, 0x02, 0x1F)
+			typedCount++
 		case ch == '#': // Hash (Shift + 3)
 			injectHidCombo(hid, 0x02, 0x20)
+			typedCount++
 		case ch == '$': // Dollar (Shift + 4)
 			injectHidCombo(hid, 0x02, 0x21)
+			typedCount++
 		case ch == '%': // Percent (Shift + 5)
 			injectHidCombo(hid, 0x02, 0x22)
+			typedCount++
 		case ch == '^': // Caret (Shift + 6)
 			injectHidCombo(hid, 0x02, 0x23)
+			typedCount++
 		case ch == '&': // Ampersand (Shift + 7)
 			injectHidCombo(hid, 0x02, 0x24)
+			typedCount++
 		case ch == '*': // Asterisk (Shift + 8)
 			injectHidCombo(hid, 0x02, 0x25)
+			typedCount++
 		case ch == '(': // Left Paren (Shift + 9)
 			injectHidCombo(hid, 0x02, 0x26)
+			typedCount++
 		case ch == ')': // Right Paren (Shift + 0)
 			injectHidCombo(hid, 0x02, 0x27)
+			typedCount++
 		case ch == '~': // Tilde (Shift + Grave)
 			injectHidCombo(hid, 0x02, 0x35)
+			typedCount++
 		case ch >= 'a' && ch <= 'z':
 			sc := byte(0x04 + (ch - 'a'))
 			injectHidKeys(hid, []byte{sc})
+			typedCount++
 		case ch >= 'A' && ch <= 'Z':
 			sc := byte(0x04 + (ch - 'A'))
 			injectHidCombo(hid, 0x02, sc) // LeftShift + char
+			typedCount++
 		case ch >= '1' && ch <= '9':
 			sc := byte(0x1E + (ch - '1'))
 			injectHidKeys(hid, []byte{sc})
+			typedCount++
 		case ch == '0':
 			injectHidKeys(hid, []byte{0x27})
+			typedCount++
 		default:
 			// ignore unsupported
 		}
@@ -1110,7 +1172,14 @@ func injectHidString(hid *os.File, str string) {
 // Emits tactile keystrokes strictly over USB HID keyboard interface (/dev/hidg0)
 // Absolutely ZERO host network daemons or companion software required.
 func sendKeystroke(btn ButtonConfig) {
-	log.Printf("[touch_cockpit] Triggering Action: %s (Key: %q)", btn.Action, btn.HidKey)
+	// Guard: Ensure action commands terminate with Enter unless it is a control combo like Ctrl+C
+	keyToSend := btn.HidKey
+	if (btn.Action == "proceed" || btn.Action == "ready" || btn.Action == "enter") &&
+		!strings.HasSuffix(keyToSend, "\n") && !strings.HasSuffix(keyToSend, "\r") {
+		keyToSend += "\n"
+	}
+
+	log.Printf("[touch_cockpit] Triggering Action: %s (Key: %q)", btn.Action, keyToSend)
 
 	// Local device log for on-target debug inspection
 	if f, err := os.OpenFile("/tmp/cockpit_event.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666); err == nil {
@@ -1119,15 +1188,18 @@ func sendKeystroke(btn ButtonConfig) {
 	}
 
 	// Direct hardware USB HID Keyboard injection into host PC via /dev/hidg0
-	hid, err := os.OpenFile("/dev/hidg0", os.O_WRONLY, 0666)
+	hid, err := getHidDevice()
 	if err != nil {
 		log.Printf("[-] /dev/hidg0 open error: %v (is USB ConfigFS gadget active?)", err)
 		return
 	}
-	defer hid.Close()
+
+	hidMu.Lock()
+	defer hidMu.Unlock()
 
 	log.Printf("[+] Injected USB HID hardware scancodes for [%s] -> /dev/hidg0", btn.Action)
-	injectHidString(hid, btn.HidKey)
+	injectHidString(hid, keyToSend)
+	log.Printf("[+] Finished USB HID injection for [%s]", btn.Action)
 }
 
 func findTouchDevice() string {

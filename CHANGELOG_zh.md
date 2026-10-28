@@ -4,6 +4,14 @@
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，并遵循
 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.2] - 2026-10-28
+
+### 修复
+
+- 在 `touch_cockpit` 中维持互斥锁保护的常驻 `/dev/hidg0` 文件描述符，彻底摒弃“每次按键重新打开/关闭”的寄生开销与潜在缺陷，根除内核 `f_hid_release` 提前重置 USB 端点 FIFO 导致尾部回车数据包丢失的隐患。
+- 在回车键（Enter）注入前引入 200ms 黄金缓冲稳定延迟，并将回车按键物理保持时间延长至 50ms、释放后留存 30ms。彻底解决终端事件循环、多路复用器（tmux）与现代交互式 CLI 框架（如 `agy`、Ink/React CLI、readline）在接收到前序文本（如 `proceed`）时因事件抖动或尚未完成 UI 状态收敛而漏掉回车的问题。
+- 在 HID 键盘引擎中显式支持回车换行符（`\r`），并在底层为 `proceed` 等动作按键提供末尾回车自动兜底补全。
+
 ## [1.0.1] - 2026-10-27
 
 ### 修复
