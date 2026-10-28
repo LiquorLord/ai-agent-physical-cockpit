@@ -206,12 +206,23 @@ Uses the external Bootlin ARMv7 EABI-HF glibc toolchain; see
 
 ## 7. Flashing & Quick Start
 
-### 7.1 Prebuilt Production SD Image (Recommended)
+### 7.1 Prebuilt Production SD Image (Recommended — Zero Compilation)
 
-The quickest way to get started is downloading the ready-to-flash image from [GitHub Releases](../../releases):
+You do **NOT** need to set up cross-compilers or build containers. The quickest way to get started is downloading the ready-to-flash golden production image directly:
 
-- **Artifact**: `v553_ai_terminal_sdboot.img.gz` (~21 MB compressed, 900 MB raw)
-- **Integrity**: verify against `v553_ai_terminal_sdboot.img.gz.sha256`
+| Mirror / Source | Download Link | Speed / Region |
+| :--- | :--- | :--- |
+| 🌍 **GitHub Releases (Official)** | [v553_ai_terminal_sdboot.img.gz](https://github.com/LiquorLord/ai-agent-physical-cockpit/releases/download/v1.0.0/v553_ai_terminal_sdboot.img.gz) | Global / Overseas direct |
+| 🇨🇳 **Domestic High-Speed Proxy** | [Fast Mirror (ghproxy)](https://ghproxy.net/https://github.com/LiquorLord/ai-agent-physical-cockpit/releases/download/v1.0.0/v553_ai_terminal_sdboot.img.gz) | Fast in China (No VPN needed) |
+| 📦 **GitHub Releases Page** | [GitHub Releases](https://github.com/LiquorLord/ai-agent-physical-cockpit/releases) | Official Release Hub |
+| 📦 **Gitee Releases Page** | [Gitee Releases](https://gitee.com/lby91772/ai-agent-physical-cockpit/releases) | Gitee Mirror Hub |
+
+- **Artifact Size**: `v553_ai_terminal_sdboot.img.gz` (~21 MB compressed, 900 MB raw uncompressed)
+- **SHA256 Checksum**: `9fa3c9e062f95ab2b015fca40198d9e26034d60a5a0535668a4c7aaa25df6b30`
+- **Included in Image**:
+  - Bootloader: Patched SyterKit Boot0 with UART power-on glitch immunity
+  - Kernel: Clean mainline Linux `6.12.0` with BOE 10.26" MIPI-DSI driver & PWM backlight
+  - Userspace: `gud_v553` (FunctionFS driverless USB display) + `touch_cockpit` (persistent HID gadget, auto-enter submission, GT911 touch rotation)
 
 #### Linux / macOS:
 ```bash

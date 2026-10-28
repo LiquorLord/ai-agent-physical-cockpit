@@ -28,6 +28,7 @@ host-tools/gud_turbo/.module-common.o
 
 # Build / release artifacts (published via GitHub/Gitee Releases, not git)
 output/
+dist/
 logs/
 board/mainline/build/
 board/mainline/output/

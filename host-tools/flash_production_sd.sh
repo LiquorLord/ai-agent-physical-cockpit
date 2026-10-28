@@ -16,10 +16,12 @@ echo "==========================================================================
 if [ -z "$IMG_INPUT" ]; then
     # Search common candidate paths
     for candidate in \
-        "output/release_v1.0/v553_ai_terminal_sdboot.img" \
+        "dist/v553_ai_terminal_sdboot.img.gz" \
+        "dist/v553_ai_terminal_sdboot.img" \
         "output/release_v1.0/v553_ai_terminal_sdboot.img.gz" \
-        "v553_ai_terminal_sdboot.img" \
-        "v553_ai_terminal_sdboot.img.gz"; do
+        "output/release_v1.0/v553_ai_terminal_sdboot.img" \
+        "v553_ai_terminal_sdboot.img.gz" \
+        "v553_ai_terminal_sdboot.img"; do
         if [ -f "$candidate" ]; then
             IMG_INPUT="$candidate"
             break

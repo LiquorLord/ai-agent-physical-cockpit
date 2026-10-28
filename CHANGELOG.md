@@ -19,6 +19,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   settle into an idle input state before executing Enter.
 - Added explicit support for Carriage Return (`\r`) in HID key injection and
   guaranteed automatic trailing newline append for `proceed` action buttons.
+- Configured direct high-speed prebuilt golden SD production image mirrors (official GitHub release + domestic high-speed proxy mirror) with SHA256 checksums in README, allowing end users to start using the cockpit immediately without compiling from source.
 
 ## [1.0.1] - 2026-10-27
 
