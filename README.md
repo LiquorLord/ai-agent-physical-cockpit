@@ -215,13 +215,13 @@ You do **NOT** need to set up cross-compilers or build containers. The quickest 
 
 | Mirror / Source | Download Link | Speed / Region |
 | :--- | :--- | :--- |
-| 🌍 **GitHub Releases (Official)** | [v553_ai_terminal_sdboot.img.gz](https://github.com/LiquorLord/ai-agent-physical-cockpit/releases/download/v1.0.0/v553_ai_terminal_sdboot.img.gz) | Global / Overseas direct |
-| 🇨🇳 **Domestic High-Speed Proxy** | [Fast Mirror (ghproxy)](https://ghproxy.net/https://github.com/LiquorLord/ai-agent-physical-cockpit/releases/download/v1.0.0/v553_ai_terminal_sdboot.img.gz) | Fast in China (No VPN needed) |
+| 🌍 **GitHub Releases (Official)** | [v553_ai_terminal_sdboot.img.gz](https://github.com/LiquorLord/ai-agent-physical-cockpit/releases/download/v1.0.3/v553_ai_terminal_sdboot.img.gz) | Global / Overseas direct |
+| 🇨🇳 **Domestic High-Speed Proxy** | [Fast Mirror (ghproxy)](https://ghproxy.net/https://github.com/LiquorLord/ai-agent-physical-cockpit/releases/download/v1.0.3/v553_ai_terminal_sdboot.img.gz) | Fast in China (No VPN needed) |
 | 📦 **GitHub Releases Page** | [GitHub Releases](https://github.com/LiquorLord/ai-agent-physical-cockpit/releases) | Official Release Hub |
 | 📦 **Gitee Releases Page** | [Gitee Releases](https://gitee.com/lby91772/ai-agent-physical-cockpit/releases) | Gitee Mirror Hub |
 
 - **Artifact Size**: `v553_ai_terminal_sdboot.img.gz` (~21 MB compressed, 900 MB raw uncompressed)
-- **SHA256 Checksum**: `9fa3c9e062f95ab2b015fca40198d9e26034d60a5a0535668a4c7aaa25df6b30`
+- **SHA256 Checksum**: `7f1f4fdf58efc27404d2ca1cac990665ef1e1930fd8ef155705db4cff38f3a41`
 - **Included in Image**:
   - Bootloader: Patched SyterKit Boot0 with UART power-on glitch immunity
   - Kernel: Clean mainline Linux `6.12.0` with BOE 10.26" MIPI-DSI driver & PWM backlight

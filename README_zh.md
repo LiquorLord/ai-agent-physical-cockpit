@@ -195,13 +195,13 @@ make -C /path/to/your/kernel ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- M=$PWD 
 
 | 镜像下载源 | 直链地址 | 适用网络与说明 |
 | :--- | :--- | :--- |
-| 🇨🇳 **国内免翻墙高速直链** | [高速镜像加速下载 (ghproxy)](https://ghproxy.net/https://github.com/LiquorLord/ai-agent-physical-cockpit/releases/download/v1.0.0/v553_ai_terminal_sdboot.img.gz) | 国内用户首选，满速免代理 |
-| 🌍 **GitHub 官方源直链** | [v553_ai_terminal_sdboot.img.gz](https://github.com/LiquorLord/ai-agent-physical-cockpit/releases/download/v1.0.0/v553_ai_terminal_sdboot.img.gz) | 海外/全球用户高速直达 |
+| 🇨🇳 **国内免翻墙高速直链** | [高速镜像加速下载 (ghproxy)](https://ghproxy.net/https://github.com/LiquorLord/ai-agent-physical-cockpit/releases/download/v1.0.3/v553_ai_terminal_sdboot.img.gz) | 国内用户首选，满速免代理 |
+| 🌍 **GitHub 官方源直链** | [v553_ai_terminal_sdboot.img.gz](https://github.com/LiquorLord/ai-agent-physical-cockpit/releases/download/v1.0.3/v553_ai_terminal_sdboot.img.gz) | 海外/全球用户高速直达 |
 | 📦 **GitHub Releases 发布页** | [GitHub Releases 页面](https://github.com/LiquorLord/ai-agent-physical-cockpit/releases) | GitHub 官方发布页 |
 | 📦 **Gitee 发行版发布页** | [Gitee Releases 页面](https://gitee.com/lby91772/ai-agent-physical-cockpit/releases) | Gitee 发行版页面 |
 
 - **压缩包体积**：`v553_ai_terminal_sdboot.img.gz`（压缩包约 21 MB，解压后 900 MB）
-- **完整性 SHA256 校验**：`9fa3c9e062f95ab2b015fca40198d9e26034d60a5a0535668a4c7aaa25df6b30`
+- **完整性 SHA256 校验**：`7f1f4fdf58efc27404d2ca1cac990665ef1e1930fd8ef155705db4cff38f3a41`
 - **固件内置特性**：
   - 引导层：修复上电串口毛刺的 SyterKit Boot0
   - 内核层：纯净主线 Linux `6.12.0`（京东方 10.26 寸 MIPI-DSI 屏驱与 PWM 调光支持）
