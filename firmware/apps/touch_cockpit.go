@@ -74,6 +74,7 @@ const (
 
 	ViewButtons = 0
 	ViewMenu    = 1
+	ViewFullscreen = 2
 )
 
 type FbBitfield struct {
@@ -701,22 +702,14 @@ func (ui *CockpitUI) renderButtons(activeButton int) {
 		ui.DrawText(subX, btnY+66, btn.SubText, 2, btn.LightColor)
 	}
 
-	// 4. Footer Telemetry & Tracker (Y: 524..598)
-	streamStr := fmt.Sprintf("FPS: %s  RAM: %dM", ui.metrics.StreamFps, ui.metrics.RamUsedMB)
-	streamColor := ColorYellow
-	if strings.Contains(ui.metrics.StreamFps, "FPS") {
-		streamColor = ColorCyan
-	}
-	ui.DrawText(1240, 532, streamStr, 1, streamColor)
+	// 3.5 Render 5th Fullscreen Toggle Button (Y: 524..568)
+	ui.DrawRect(1220, 524, 360, 44, ColorDarkGray)
+	ui.DrawFrame(1220, 524, 360, 44, 2, ColorCyan)
+	ui.DrawText(1240, 538, "[⛶ FULLSCREEN / 全屏切换]", 2, ColorWhite)
 
-	lastStr := ui.metrics.LastAction
-	if ui.metrics.LastActionTime != "" {
-		lastStr = fmt.Sprintf("LAST: %s (%s)", ui.metrics.LastAction, ui.metrics.LastActionTime)
-	}
-	ui.DrawText(1240, 552, lastStr, 1, ColorGreenLight)
-
-	footerLabel := fmt.Sprintf("%s COCKPIT • V553 USB-HID MACRO", prof.Badge)
-	ui.DrawText(1240, 574, footerLabel, 1, ColorDivider)
+	// 4. Footer Telemetry & Tracker (Y: 574..598)
+	footerLabel := fmt.Sprintf("%s COCKPIT • FPS: %s • F24 TOGGLE", prof.Badge, ui.metrics.StreamFps)
+	ui.DrawText(1230, 578, footerLabel, 1, ColorDivider)
 }
 
 // Render the on-device touch-driven Agent Profile Selection Menu (ViewMenu)
@@ -810,12 +803,33 @@ func (ui *CockpitUI) Flip() {
 func (ui *CockpitUI) RenderCurrentView(activeButton int) {
 	ui.mu.Lock()
 	defer ui.mu.Unlock()
-	if ui.currentView == ViewMenu {
+	if ui.currentView == ViewFullscreen {
+		// In fullscreen mode, keep action bar hidden; zero FB blitting
+		return
+	} else if ui.currentView == ViewMenu {
 		ui.renderMenu()
 	} else {
 		ui.renderButtons(activeButton)
 	}
 	ui.Flip()
+}
+
+func (ui *CockpitUI) ToggleFullscreen() {
+	ui.mu.Lock()
+	defer ui.mu.Unlock()
+	if ui.currentView == ViewFullscreen {
+		ui.currentView = ViewButtons
+		log.Printf("[MODE] Exiting Fullscreen -> Dual-Zone (1200x600)")
+	} else {
+		ui.currentView = ViewFullscreen
+		log.Printf("[MODE] Entering Fullscreen -> 1600x600 Full Panel")
+	}
+	hid, err := getHidDevice()
+	if err == nil {
+		hidMu.Lock()
+		injectF24(hid)
+		hidMu.Unlock()
+	}
 }
 
 func (ui *CockpitUI) ToggleMenu() {
@@ -1066,6 +1080,16 @@ func injectHidEnter(hid *os.File, hadPrecedingChars bool) {
 	hid.Write(release)
 	time.Sleep(30 * time.Millisecond)
 	log.Printf("[HID] Enter scancode (0x28) injected (hadPreceding=%v, hold=50ms)", hadPrecedingChars)
+}
+
+func injectF24(hid *os.File) {
+	press := []byte{0, 0, 0x73, 0, 0, 0, 0, 0}
+	release := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	hid.Write(press)
+	time.Sleep(30 * time.Millisecond)
+	hid.Write(release)
+	time.Sleep(30 * time.Millisecond)
+	log.Printf("[HID] F24 (0x73) scancode injected successfully")
 }
 
 func injectHidString(hid *os.File, str string) {
@@ -1342,7 +1366,18 @@ func main() {
 					screenY = int(rawY)
 				}
 
-				// Physical Right 400x600 region (Zone B)
+				// Check Fullscreen Mode Top-Right Exit Hot Zone (X > 1480, Y < 100)
+				if ui != nil && ui.currentView == ViewFullscreen {
+					if screenX >= 1450 && screenY <= 100 && !actionTriggered && time.Since(lastTriggerTime) >= 500*time.Millisecond {
+						actionTriggered = true
+						lastTriggerTime = time.Now()
+						log.Printf("[TOUCH] Top-right hot zone tapped -> Exiting Fullscreen")
+						ui.ToggleFullscreen()
+					}
+					continue
+				}
+
+				// Physical Right 400x600 region (Zone B in Dual-Zone mode)
 				if screenX >= 1150 {
 					log.Printf("[TOUCH] Raw(%d, %d) -> Screen(%d, %d)", rawX, rawY, screenX, screenY)
 					if ui != nil && ui.currentView == ViewMenu {
@@ -1378,6 +1413,16 @@ func main() {
 							continue
 						}
 
+						// Check 5th Fullscreen button (Y: 524..570)
+						if screenY >= 524 && screenY <= 575 && !actionTriggered && time.Since(lastTriggerTime) >= 500*time.Millisecond {
+							actionTriggered = true
+							lastTriggerTime = time.Now()
+							if ui != nil {
+								ui.ToggleFullscreen()
+							}
+							continue
+						}
+
 						// 2. Check 4 tactile action buttons
 						btn := 0
 						if screenY >= 46 && screenY < 155 {
@@ -1386,7 +1431,7 @@ func main() {
 							btn = 2
 						} else if screenY >= 286 && screenY < 395 {
 							btn = 3
-						} else if screenY >= 406 && screenY <= 520 {
+						} else if screenY >= 406 && screenY < 520 {
 							btn = 4
 						}
 

@@ -11,6 +11,9 @@
 
 ---
 
+
+> **Display modes**: the 5th button and top-right hot zone switch between `1200x600` and `1600x600`. This **requires the host hook** in [`host/`](host/README.md).
+
 ## 1. Project Overview
 
 **AI-Agent Physical Cockpit** started life as a **cheap eBay dashcam**.

@@ -405,11 +405,14 @@ static void *bulk_worker_thread(void *arg) {
         uint32_t base_y = job.y;
 
         uint32_t max_rx = w;
-        if (g_active_mode_width <= GUD_VIEWPORT_WIDTH && base_x + max_rx > GUD_VIEWPORT_WIDTH) {
-            max_rx = (base_x < GUD_VIEWPORT_WIDTH) ? (GUD_VIEWPORT_WIDTH - base_x) : 0;
-        }
-        if (base_x + max_rx > TOTAL_PANEL_WIDTH) {
-            max_rx = (base_x < TOTAL_PANEL_WIDTH) ? (TOTAL_PANEL_WIDTH - base_x) : 0;
+        if (g_active_mode_width <= GUD_VIEWPORT_WIDTH) {
+            if (base_x + max_rx > GUD_VIEWPORT_WIDTH) {
+                max_rx = (base_x < GUD_VIEWPORT_WIDTH) ? (GUD_VIEWPORT_WIDTH - base_x) : 0;
+            }
+        } else {
+            if (base_x + max_rx > TOTAL_PANEL_WIDTH) {
+                max_rx = (base_x < TOTAL_PANEL_WIDTH) ? (TOTAL_PANEL_WIDTH - base_x) : 0;
+            }
         }
         uint32_t max_ry = h;
         if (base_y + max_ry > SCREEN_HEIGHT) {
@@ -789,7 +792,15 @@ int main(int argc, char **argv) {
                     pending_job.compression = sbuf.compression;
                     pending_job.compressed_length = le32toh(sbuf.compressed_length);
                     if (pending_job.width > GUD_VIEWPORT_WIDTH || (pending_job.x + pending_job.width) > GUD_VIEWPORT_WIDTH) {
-                        g_active_mode_width = TOTAL_PANEL_WIDTH;
+                        if (g_active_mode_width != TOTAL_PANEL_WIDTH) {
+                            g_active_mode_width = TOTAL_PANEL_WIDTH;
+                            g_force_full_frame = true;
+                        }
+                    } else if (pending_job.width == GUD_VIEWPORT_WIDTH && pending_job.x == 0) {
+                        if (g_active_mode_width != GUD_VIEWPORT_WIDTH) {
+                            g_active_mode_width = GUD_VIEWPORT_WIDTH;
+                            g_force_full_frame = true;
+                        }
                     }
                     queue_push(pending_job);
                 } else if (len > 0) {

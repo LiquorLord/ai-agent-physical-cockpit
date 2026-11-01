@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Dual display modes: Dual-Zone `1200x600@60Hz` (left desktop, right 400x600 touch Action Bar)
+  and Fullscreen `1600x600@57.11Hz` (whole panel touch-active). A 5th button under the four
+  macro buttons enters Fullscreen; a transparent top-right hot zone (`X>=1450, Y<=100`) returns.
+- `gud_v553` follows the host-selected mode dynamically and renders the full panel when 1600 wide.
+- `host/` hook scripts for X11+i3 and Wayland+sway. **The host hook is required**: the board only
+  injects HID `F24` (`0x73`); the host must switch the video mode. See `host/README.md`.
+
+### Fixed
+
+- HID report descriptor max usage raised from `0x65` to `0x73`; the host previously dropped `F24`.
+- The hook must bind keycode 202 (`bindcode 202`); `F24` has no keysym in the default XKB map.
+- `scripts/uart_cmd.py` aborts stale quoted input with Ctrl+C before each command.
+
 ## [1.0.2] - 2026-10-28
 
 ### Fixed
