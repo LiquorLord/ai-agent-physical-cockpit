@@ -24,12 +24,23 @@ echo "[+] FEL device detected!"
 "${SUNXI_FEL}" -v ver
 echo ""
 
-echo "[*] Querying SPI Flash info..."
-"${SUNXI_FEL}" spiflash-info || true
+echo "[*] Querying SPI Flash info and detecting capacity..."
+INFO_OUTPUT=$("${SUNXI_FEL}" spiflash-info 2>&1 || true)
+echo "${INFO_OUTPUT}"
 echo ""
 
-echo "[*] Dumping 16MB SPI Flash to ${BACKUP_FILE}..."
-echo "[*] Dumping the full 16MB Flash image to ${BACKUP_FILE}, do not disconnect..."
+# Dynamically parse capacity from JEDEC query (e.g., "size: 16777216 bytes")
+DETECTED_SIZE=$(echo "${INFO_OUTPUT}" | grep -oiE "size: *[0-9]+" | awk '{print $2}' || true)
+if [ -n "${DETECTED_SIZE}" ] && [ "${DETECTED_SIZE}" -gt 0 ]; then
+    FLASH_SIZE=$(printf "0x%x" "${DETECTED_SIZE}")
+    echo "[+] Dynamically detected Flash capacity: ${FLASH_SIZE} (${DETECTED_SIZE} bytes)"
+else
+    FLASH_SIZE="0x1000000"
+    echo "[!] Could not parse exact size from info, defaulting to 16MB (${FLASH_SIZE})"
+fi
+
+BACKUP_FILE="${SCRIPT_DIR}/backup_factory_${FLASH_SIZE}.bin"
+echo "[*] Dumping Flash image to ${BACKUP_FILE}, do not disconnect..."
 "${SUNXI_FEL}" -p spiflash-read 0 "${FLASH_SIZE}" "${BACKUP_FILE}"
 
 echo ""

@@ -17,12 +17,17 @@ def run_cmd(cmd, timeout=5.0):
     attrs[5] = termios.B115200
     termios.tcsetattr(fd, termios.TCSANOW, attrs)
 
-    # Flush input buffer
+    # Flush input buffer and abort any pending quote/subshell
+    os.write(fd, b"\x03\x03\n")
+    time.sleep(0.1)
     while True:
         r, _, _ = select.select([fd], [], [], 0.05)
         if not r:
             break
-        os.read(fd, 1024)
+        try:
+            os.read(fd, 1024)
+        except Exception:
+            break
 
     token = f"CMD_DONE_{int(time.time()*1000)}"
     # Send stty -echo to prevent serial echo interference, then run command
